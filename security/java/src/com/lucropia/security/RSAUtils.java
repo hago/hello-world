@@ -45,7 +45,7 @@ public class RSAUtils {
 		try {
 			Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 			int start = 0;
-			int maxPlainLength = key.getModulus().bitCount() / 8;
+			int maxPlainLength = key.getModulus().bitCount() / 8 - 11;
 			cipher.init(Cipher.ENCRYPT_MODE, key);
 			ByteArrayOutputStream stream = new ByteArrayOutputStream();
 			while (start < input.length) {

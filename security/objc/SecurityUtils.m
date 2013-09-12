@@ -39,7 +39,7 @@ SecKeyRef publicKey;
 {
     NSData *dercontent = [NSData dataWithBytes:(const void *)DEFAULT_RSA_PUBLIC_KEY_DER length:DEFAULT_RSA_PUBLIC_KEY_DER_LENGTH];
     publicKey = [self initWithDer:dercontent];
-    maxPlainLength = SecKeyGetBlockSize(publicKey) - 12;
+    maxPlainLength = SecKeyGetBlockSize(publicKey) - 11;
 }
 
 -(SecKeyRef)initWithDer:(NSData *)dercontent
