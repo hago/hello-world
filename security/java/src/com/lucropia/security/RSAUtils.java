@@ -42,12 +42,11 @@ public class RSAUtils {
 	protected static byte[] encryptWithPublicKey(byte[] input, RSAPublicKey key)
 			throws LucropiaException {
 		String errmsg;
-		try {
+		try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
 			Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 			int start = 0;
 			int maxPlainLength = key.getModulus().bitCount() / 8 - 11;
 			cipher.init(Cipher.ENCRYPT_MODE, key);
-			ByteArrayOutputStream stream = new ByteArrayOutputStream();
 			while (start < input.length) {
 				int len = (start + maxPlainLength) > input.length ? (input.length - start)
 						: maxPlainLength;
