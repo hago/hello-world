@@ -6,7 +6,7 @@
 
 package com.hagoapp.poc.threadedpipe;
 
-public class TaskConfig {
+public class SleepConsumerConfig implements ConsumerConfig {
     private int sleepSecond;
 
     private String name;
@@ -25,5 +25,12 @@ public class TaskConfig {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public static final String SLEEP_CONSUMER = "com.hagoapp.poc.threadedpipe.sleep";
+
+    @Override
+    public String getConsumerType() {
+        return SLEEP_CONSUMER;
     }
 }

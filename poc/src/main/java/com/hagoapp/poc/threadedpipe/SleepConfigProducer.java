@@ -6,23 +6,24 @@
 
 package com.hagoapp.poc.threadedpipe;
 
-public class TaskConfigGenerator {
+public class SleepConfigProducer implements Producer {
 
-    public static TaskConfigGenerator CreateGenerator(int taskNumber) {
-        return new TaskConfigGenerator(taskNumber);
+    public static SleepConfigProducer CreateGenerator(int taskNumber) {
+        return new SleepConfigProducer(taskNumber);
     }
 
     private final int taskNum;
     private int generatedNum = 0;
 
-    private TaskConfigGenerator(int num) {
+    private SleepConfigProducer(int num) {
         taskNum = num;
     }
 
-    public synchronized TaskConfig getTask() {
+    @Override
+    public synchronized SleepConsumerConfig createConsumerConfig() {
         if (generatedNum < taskNum) {
             generatedNum++;
-            var t = new TaskConfig();
+            var t = new SleepConsumerConfig();
             t.setName("Task No." + generatedNum);
             return t;
         } else {

@@ -8,7 +8,6 @@ package com.hagoapp.poc.threadedpipe;
 
 import com.hagoapp.poc.AppLogger;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -24,7 +23,7 @@ public class ThreadedPipe {
         pool = new ThreadPoolExecutor(minThreadCount, maxThreadCount, 0,
                 TimeUnit.SECONDS,
                 threadQueue);
-        var generator = TaskConfigGenerator.CreateGenerator(1000);
+        var generator = SleepConfigProducer.CreateGenerator(1000);
         logger.info("enter loop");
         while (true) {
             if (threadQueue.size() >= pool.getMaximumPoolSize()) {
@@ -37,21 +36,20 @@ public class ThreadedPipe {
                 }
             }
             logger.info("queue {} maximum {}", threadQueue.size(), pool.getMaximumPoolSize());
-            var newTaskConfig = generator.getTask();
-            if (newTaskConfig == null) {
+            var newConfig = generator.createConsumerConfig();
+            if (newConfig == null) {
                 break;
             }
-            var task = new Consumer(newTaskConfig);
-            pool.execute(task);
-            logger.info("task added: {}", task.getName());
+            var consumer = ConsumerFactory.createConsumer(newConfig);
+            pool.execute(consumer);
+            logger.info("consumer added: {}", consumer.getName());
         }
         while (pool.getActiveCount() > 0) {
             try {
                 logger.info("Active tasks: {}", pool.getActiveCount());
                 Thread.sleep(500);
-                continue;
             } catch (InterruptedException e) {
-                continue;
+                //
             }
         }
         logger.info("shutdown pool");

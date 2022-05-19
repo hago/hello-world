@@ -6,5 +6,6 @@
 
 package com.hagoapp.poc.threadedpipe;
 
-public class Task {
+public interface Producer {
+    ConsumerConfig createConsumerConfig();
 }

@@ -9,31 +9,20 @@ package com.hagoapp.poc.threadedpipe;
 import com.hagoapp.poc.AppLogger;
 import org.slf4j.Logger;
 
-import java.time.Instant;
-import java.util.Random;
-import java.util.concurrent.TimeUnit;
+import java.io.Closeable;
+import java.io.IOException;
 
-public class Consumer implements Runnable {
+public abstract class Consumer implements Runnable, Closeable {
 
-    private final TaskConfig config;
-    private final Logger logger = AppLogger.getLogger();
+    protected final Logger logger = AppLogger.getLogger();
+    public abstract void loadConfig(ConsumerConfig config);
 
-    public Consumer(TaskConfig cfg) {
-        config = cfg;
-    }
+    public abstract String supportConsumerType();
+
+    public abstract String getName();
 
     @Override
-    public void run() {
-        var duration = new Random(Instant.now().toEpochMilli()).nextInt(500);
-        try {
-            TimeUnit.MILLISECONDS.sleep(duration);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        logger.info("running {} for {}", config.getName(), duration);
-    }
-
-    public String getName() {
-        return config.getName();
+    public void close() throws IOException {
+        // do nothing by default
     }
 }
