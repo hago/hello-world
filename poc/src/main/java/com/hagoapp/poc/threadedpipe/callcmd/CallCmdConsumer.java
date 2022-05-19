@@ -36,9 +36,15 @@ public class CallCmdConsumer extends Consumer {
     @Override
     public void run() {
         try {
+            //logger.info("start call cmd");
             var p = Runtime.getRuntime().exec(config.getCmd(), config.getArguments().toArray(new String[0]));
+            //logger.info("process created");
             var s = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            //logger.info("read stdout");
             var err = new String(p.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            //logger.info("read stderr");
+            p.waitFor();
+            //logger.info("process created");
             logger.info("{} output: {}", getName(), s);
             logger.error("{} errout: {}", getName(), err);
         } catch (Exception e) {

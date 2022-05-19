@@ -7,6 +7,7 @@
 package com.hagoapp.poc.threadedpipe;
 
 import com.hagoapp.poc.AppLogger;
+import com.hagoapp.poc.threadedpipe.callcmd.CallCmdProducer;
 import org.slf4j.Logger;
 
 import java.util.concurrent.LinkedBlockingQueue;
@@ -25,7 +26,8 @@ public class ThreadedPipe {
                 threadQueue);
         var generated = 0;
         logger.info("enter loop");
-        var producer = new SleepConfigProducer();
+        //var producer = new SleepConfigProducer();
+        var producer = new CallCmdProducer();
         while (generated < count) {
             if (threadQueue.size() >= pool.getMaximumPoolSize()) {
                 logger.info("pool full, sleep");

@@ -9,12 +9,15 @@ package com.hagoapp.poc.threadedpipe.callcmd;
 import com.hagoapp.poc.threadedpipe.ConsumerConfig;
 import com.hagoapp.poc.threadedpipe.Producer;
 
+import java.util.List;
+
 public class CallCmdProducer implements Producer {
 
     @Override
     public ConsumerConfig createConsumerConfig() {
         var cfg = new CallCmdConsumerConfig();
-        cfg.setCmd("date");
+        cfg.setCmd("powershell.exe -command date");
+        //cfg.setArguments(List.of("-command", "dir"));
         return cfg;
     }
 }
