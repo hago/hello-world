@@ -6,28 +6,16 @@
 
 package com.hagoapp.poc.threadedpipe;
 
+import java.util.UUID;
+
 public class SleepConfigProducer implements Producer {
 
-    public static SleepConfigProducer CreateGenerator(int taskNumber) {
-        return new SleepConfigProducer(taskNumber);
-    }
-
-    private final int taskNum;
-    private int generatedNum = 0;
-
-    private SleepConfigProducer(int num) {
-        taskNum = num;
-    }
+    private final String id = UUID.randomUUID().toString();
 
     @Override
     public synchronized SleepConsumerConfig createConsumerConfig() {
-        if (generatedNum < taskNum) {
-            generatedNum++;
-            var t = new SleepConsumerConfig();
-            t.setName("Task No." + generatedNum);
-            return t;
-        } else {
-            return null;
-        }
+        var t = new SleepConsumerConfig();
+        t.setName("Sleep Consumer: " + id);
+        return t;
     }
 }

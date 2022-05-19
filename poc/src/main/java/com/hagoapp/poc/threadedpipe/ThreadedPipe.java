@@ -19,13 +19,14 @@ public class ThreadedPipe {
     private static ThreadPoolExecutor pool;
     private static final Logger logger = AppLogger.getLogger();
 
-    public static void run(int minThreadCount, int maxThreadCount) {
+    public static void run(int minThreadCount, int maxThreadCount, int count) {
         pool = new ThreadPoolExecutor(minThreadCount, maxThreadCount, 0,
                 TimeUnit.SECONDS,
                 threadQueue);
-        var generator = SleepConfigProducer.CreateGenerator(1000);
+        var generated = 0;
         logger.info("enter loop");
-        while (true) {
+        var producer = new SleepConfigProducer();
+        while (generated < count) {
             if (threadQueue.size() >= pool.getMaximumPoolSize()) {
                 logger.info("pool full, sleep");
                 try {
@@ -35,14 +36,15 @@ public class ThreadedPipe {
                     continue;
                 }
             }
-            logger.info("queue {} maximum {}", threadQueue.size(), pool.getMaximumPoolSize());
-            var newConfig = generator.createConsumerConfig();
+            //logger.info("queue {} maximum {}", threadQueue.size(), pool.getMaximumPoolSize());
+            var newConfig = producer.createConsumerConfig();
             if (newConfig == null) {
                 break;
             }
             var consumer = ConsumerFactory.createConsumer(newConfig);
             pool.execute(consumer);
-            logger.info("consumer added: {}", consumer.getName());
+            generated++;
+            logger.info("consumer added: {}, no. {}", consumer.getName(), generated);
         }
         while (pool.getActiveCount() > 0) {
             try {

@@ -19,10 +19,13 @@ public class ThreadedPipePoc extends CommandWithConfig {
     @Option(names = {"-max", "--maximum"}, defaultValue = "20")
     private int maxThreadCount;
 
+    @Option(names = {"-n", "--count"}, defaultValue = "100")
+    private int count;
+
     @Override
     public Integer call() throws IOException {
         super.call();
-        ThreadedPipe.run(minThreadCount, maxThreadCount);
+        ThreadedPipe.run(minThreadCount, maxThreadCount, count);
         return 0;
     }
 }
