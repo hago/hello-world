@@ -6,11 +6,12 @@
 
 package com.hagoapp.poc;
 
+import com.hagoapp.poc.command.SpringBootCommand;
 import com.hagoapp.poc.command.ThreadedPipePoc;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
-@Command(name = "A POC Application", subcommands = {ThreadedPipePoc.class})
+@Command(name = "A POC Application", subcommands = {ThreadedPipePoc.class, SpringBootCommand.class})
 public class Application {
 
     public static void main(String[] args) {

@@ -9,6 +9,8 @@
 package com.hagoapp.poc.command;
 
 import com.fasterxml.jackson.jr.ob.JSON;
+import com.hagoapp.poc.AppLogger;
+import org.slf4j.Logger;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -24,6 +26,7 @@ public class CommandWithConfig implements Callable<Integer> {
     @CommandLine.Option(names = {"-c", "--config"}, description = "specify config file, ./config.json by default ")
     protected String configFile = "config.json";
     protected Map<String, Object> configuration = new HashMap<>();
+    protected Logger logger = AppLogger.getLogger();
 
     @Override
     public Integer call() throws IOException {
