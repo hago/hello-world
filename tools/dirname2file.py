@@ -28,12 +28,19 @@ if __name__=='__main__':
             if any([re.match(x, f) != None for x in arg.exclude]):
                 print('skip %s' % f)
                 continue
+            newfiles = []
             dot0pos = f.find('.')
             fileext = '' if dot0pos < 0 else f[dot0pos:]
             of = os.path.join(pathname, f)
             nf = os.path.join(pathname, '%s%s' % (os.path.basename(pathname), fileext))
+            nameconflict = nf in newfiles
+            if nameconflict:
+                print('error: file name to be renamed conflicted "%s/%s" <-> "%s/%s", will skip' % (pathname, f, pathname, nf))
+            else:
+                newfiles.append(nf)
             if arg.dry_run:
                 print('mv "%s" "%s"' % (of, nf))
             else:
-                shutil.move(of, nf)
+                if not nameconflict:
+                    shutil.move(of, nf)
 
