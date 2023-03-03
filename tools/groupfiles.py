@@ -39,7 +39,7 @@ class files_grouper:
                     shutil.move(oldfile, newfile)
     
     def __buildgroup(self, files):
-        keyprepare = lambda f: f.split('.') if self.cfg.groupby == 'dotslice' else f
+        keyprepare = lambda f: [segment.strip() for segment in (f.split('.') if self.cfg.groupby == 'dotslice' else f)]
         keystringify = lambda sl: '.'.join(sl) if self.cfg.groupby == 'dotslice' else sl
         amap = {}
         for f in files:
