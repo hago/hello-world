@@ -8,10 +8,28 @@ import shutil
 
 def buildargparser():
     parser = argparse.ArgumentParser(description='apply directory name to files in it')
-    parser.add_argument('-n', '--dry-run', default=False, help = 'print operations to be perform, yet not execute them', action = 'store_true')
+    parser.add_argument('-X', '--execute', default=False, help = 'Do the actual renaming execution, or only print out actions to be.', action = 'store_true')
     parser.add_argument('-p', '--path', default='./', help = 'path to look into')
     parser.add_argument('-x', '--exclude', default=[], help = 'exclude files with specified extensions', nargs='*')
+    parser.add_argument('-n', '--segnum', default=1, help='the number of dot separated part(s) in old name that will be replaced(except the ext). 1 by default, negative number means starting counting from end.', type=int)
     return parser
+
+def newfilename(oldname, replace, segnum):
+    parts = oldname.split('.')
+    if segnum == 0:
+        return '%s.%s' % (replace, oldname)
+    elif segnum > 0:
+        ext = parts[1] if len(parts) > 1 else ''
+        baseparts = parts[:-1] if len(parts) > 1 else parts
+        if len(baseparts) <= segnum:
+            nf = replace
+        else:
+            nf = ".".join([replace] + baseparts[segnum:-1])
+        return nf if ext == '' else '%s.%s' % (nf, ext)
+    else:
+        reserve = parts[segnum:] if abs(segnum) <= len(parts) else parts
+        #print(reserve)
+        return ".".join([replace] + reserve)
 
 if __name__=='__main__':
     parser = buildargparser()
@@ -24,21 +42,21 @@ if __name__=='__main__':
         if os.path.realpath(os.path.join(pathname, os.path.pardir)) != rootpath:
             continue
         print('process %s' % pathname)
+        replace = os.path.basename(pathname)
         for f in files:
             if any([re.match(x, f) != None for x in arg.exclude]):
                 print('skip %s' % f)
                 continue
             newfiles = []
-            dot0pos = f.find('.')
-            fileext = '' if dot0pos < 0 else f[dot0pos:]
+            nrf = newfilename(f, replace, arg.segnum)
             of = os.path.join(pathname, f)
-            nf = os.path.join(pathname, '%s%s' % (os.path.basename(pathname), fileext))
+            nf = os.path.join(pathname, nrf)
             nameconflict = nf in newfiles
             if nameconflict:
                 print('error: file name to be renamed conflicted "%s/%s" <-> "%s/%s", will skip' % (pathname, f, pathname, nf))
             else:
                 newfiles.append(nf)
-            if arg.dry_run:
+            if not arg.execute:
                 print('mv "%s" "%s"' % (of, nf))
             else:
                 if not nameconflict:
