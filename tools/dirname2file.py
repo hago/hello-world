@@ -43,19 +43,19 @@ if __name__=='__main__':
             continue
         print('process %s' % pathname)
         replace = os.path.basename(pathname)
+        newfiles = []
         for f in files:
             if any([re.match(x, f) != None for x in arg.exclude]):
                 print('skip %s' % f)
                 continue
-            newfiles = []
             nrf = newfilename(f, replace, arg.segnum)
-            of = os.path.join(pathname, f)
             nf = os.path.join(pathname, nrf)
             nameconflict = nf in newfiles
             if nameconflict:
                 print('error: file name to be renamed conflicted "%s/%s" <-> "%s/%s", will skip' % (pathname, f, pathname, nf))
             else:
                 newfiles.append(nf)
+            of = os.path.join(pathname, f)
             if not arg.execute:
                 print('mv "%s" "%s"' % (of, nf))
             else:
