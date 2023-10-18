@@ -9,9 +9,12 @@ import os.path
 import re
 
 logging.basicConfig(level=logging.INFO)
-NUMBER_PATTERN = re.compile('^(\\d{6}(-|_)\d+)')
-LETTER_PATTERN = re.compile('^(\w{2,5}-\d+)')
-N_PATTERN = re.compile('^(n\d+)')
+PATTERNS = (
+    ('TH_PATTERN', re.compile('^(th\d+(-|_)\d+(-|_)\d+)', re.I)),
+    ('NUMBER_PATTERN', re.compile('^(\d{6}(-|_)\d+)', re.I)),
+    ('LETTER_PATTERN', re.compile('^(\w{2,5}-\d+)', re. I)),
+    ('N_PATTERN', re.compile('^((n|k)\d+)', re.I))
+)
 
 def buildargparser():
     parser = argparse.ArgumentParser(description='apply directory name to files in it')
@@ -20,15 +23,10 @@ def buildargparser():
 
 def calcIdentity(input):
     basename = os.path.basename(input)
-    m = NUMBER_PATTERN.search(basename)
-    if m != None:
-        return m.group(0)
-    m = LETTER_PATTERN.search(basename)
-    if m != None:
-        return m.group(0)
-    m = N_PATTERN.search(basename, re.I)
-    if m != None:
-        return m.group(0)
+    for (name, pattern) in PATTERNS:
+        m = pattern.search(basename)
+        if m != None:
+            return m.group(0).lower()
     return None
 
 def findVideoItem(path):
