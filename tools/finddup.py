@@ -10,6 +10,7 @@ import re
 
 logging.basicConfig(level=logging.INFO)
 PATTERNS = (
+    ('CAPPV_PATTERN', re.compile('^(CAPPV-\d+(-|_)\d+)', re.I)),
     ('TH_PATTERN', re.compile('^(th\d+(-|_)\d+(-|_)\d+)', re.I)),
     ('NUMBER_PATTERN', re.compile('^(\d{6}(-|_)\d+)', re.I)),
     ('LETTER_PATTERN', re.compile('^(\w{2,5}-\d+)', re. I)),
