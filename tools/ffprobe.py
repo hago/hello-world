@@ -165,9 +165,19 @@ def __escapefn(fn: str):
     return fn.replace("'", "\\'").replace('"', '\\"').replace(" ", "\\ ")
 
 def __checkffprobe():
-    with Popen(["which", "ffprobe"], stdout=PIPE) as p:
-        result = p.stdout.read()
-    return result != None and result != ''
+    if sys.platform == 'linux':
+        with Popen(["which", "ffprobe"], stdout=PIPE) as p:
+            result = p.stdout.read()
+        return result != None and result != ''
+    elif sys.platform.startswith('win'):
+        try:
+            with Popen(["ffprobe"], stdout=PIPE, stderr=PIPE) as p:
+                result = p.stdout.read()
+            return result != None and result != ''
+        except FileNotFoundError:
+            return False
+    else:
+        raise Exception("unsupported platform %s" % sys.platform)
 
 def buildargparser():
     parser = argparse.ArgumentParser(description='run ffprobe')
