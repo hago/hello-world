@@ -36,16 +36,34 @@ class argfilter:
         self.brmin = 0
         if arg.bit_rate != None:
             for r in arg.bit_rate:
-                try:
-                    x = int(r)
-                    if x > 0 and x > self.brmax:
-                        self.brmax = x
-                    elif x < 0:
-                        x = abs(x)
-                        if self.brmin == 0 or self.brmin > x:
-                            self.brmin = x
-                except ValueError:
-                    logging.warning("invalid bitrate %s, ignored", r)
+                x = self.__calcbr(r)
+                if x == None:
+                    continue
+                if x > 0 and x > self.brmax:
+                    self.brmax = x
+                elif x < 0:
+                    x = abs(x)
+                    if self.brmin == 0 or self.brmin > x:
+                        self.brmin = x
+
+    def __calcbr(self, strbr: str) -> int:
+        s = strbr.lower().strip()
+        units = 1
+        if s.endswith("k"):
+            units = 1024
+            s = s[:-1]
+        elif s.endswith('m'):
+            units = 1024 * 1024
+            s = s[:-1]
+        elif s.endswith('g'):
+            units = 1024 * 1024 * 1024
+            s = s[:-1]
+        try:
+            x = int(s)
+            return x * units
+        except ValueError:
+            logging.warning("invalid bitrate %s, ignored", strbr)
+            return None
 
     def test(self, sinfo: streaminfo):
         return self.__codectest(sinfo) and self.__brtest(sinfo)
