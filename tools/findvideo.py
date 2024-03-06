@@ -7,7 +7,7 @@ import os
 import os.path
 import sys
 
-from ffprobe import probe, streaminfo
+from pyffprobe import probe, streaminfo
 
 def buildargparser():
     parser = argparse.ArgumentParser(description='find video files by meta info')
