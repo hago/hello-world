@@ -3,6 +3,8 @@
 
 import argparse
 import json
+import logging
+import os.path
 import sys
 
 from subprocess import Popen, PIPE
@@ -210,10 +212,14 @@ def buildargparser():
 if __name__=='''__main__''':
     parser = buildargparser()
     arg = parser.parse_args()
+    if not os.path.exists(arg.path) or not os.path.isfile(arg.path):
+        logging.error("%s not found or invalid", arg.path)
+        sys.exit(-1)
     vi = probe(arg.path)
     if arg.bit_rate:
         streams = __filterstreams(arg, vi)
+        print(arg.path)
         for s in streams:
-            print('%s %s' % (arg.path, __formatbitrate(arg, s.codec.bitrate)))
+            print('%s: %s %s' % (s.codec.type, s.codec.name, __formatbitrate(arg, s.codec.bitrate)))
     else:
         print(json.dumps(vi, default=lambda s: s.__dict__, indent = 4))
