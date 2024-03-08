@@ -192,18 +192,18 @@ def __formatbitrate(arg, br, scale = 2):
     if br < 0 or not arg.bit_rate_humanfriendly:
         return br
     basefmt = '%%0.%df' % scale
-    if br > 1024 * 1024 * 1024:
-        return ('%sG' % basefmt) % (br / 1024 / 1024 / 1024)
-    elif br > 1024 * 1024:
-        return ('%sM' % basefmt) % (br / 1024 / 1024)
-    elif br > 1024:
-        return ('%sK' % basefmt) % (br / 1024)
+    if br > 1000 * 1000 * 1000:
+        return ('%sG' % basefmt) % (br / 1000 / 1000 / 1000)
+    elif br > 1000 * 1000:
+        return ('%sM' % basefmt) % (br / 1000 / 1000)
+    elif br > 1000:
+        return ('%sK' % basefmt) % (br / 1000)
     else:
         return br
 
 def buildargparser():
     parser = argparse.ArgumentParser(description='run ffprobe')
-    parser.add_argument('-p', '--path', help = 'media file name', required=True)
+    parser.add_argument('filename', help = 'media file name')
     parser.add_argument('-br', '--bit-rate', help = 'print bit rate', action='store_true', default=False)
     parser.add_argument('-stf', '--stream-type-filter', help = 'stream type filter', default='avs')
     parser.add_argument('-brh', '--bit-rate-humanfriendly', help = 'display bitrate values human friendly', action='store_true')
@@ -212,13 +212,13 @@ def buildargparser():
 if __name__=='''__main__''':
     parser = buildargparser()
     arg = parser.parse_args()
-    if not os.path.exists(arg.path) or not os.path.isfile(arg.path):
-        logging.error("%s not found or invalid", arg.path)
+    if not os.path.exists(arg.filename) or not os.path.isfile(arg.filename):
+        logging.error("%s not found or invalid", arg.filename)
         sys.exit(-1)
-    vi = probe(arg.path)
+    vi = probe(arg.filename)
     if arg.bit_rate:
         streams = __filterstreams(arg, vi)
-        print(arg.path)
+        print(arg.filename)
         for s in streams:
             print('%s: %s %s' % (s.codec.type, s.codec.name, __formatbitrate(arg, s.codec.bitrate)))
     else:
