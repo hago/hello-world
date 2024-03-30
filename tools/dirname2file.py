@@ -5,6 +5,7 @@ import argparse
 import os
 import re
 import shutil
+import sys
 
 def buildargparser():
     parser = argparse.ArgumentParser(description='apply directory name to files in it')
@@ -52,7 +53,9 @@ if __name__=='__main__':
             nf = os.path.join(pathname, nrf)
             nameconflict = nf in newfiles
             if nameconflict:
-                print('error: file name to be renamed conflicted "%s/%s" <-> "%s/%s", will skip' % (pathname, f, pathname, nf))
+                msg = 'error: file name to be renamed conflicted "%s/%s" <-> "%s/%s", will skip' % (pathname, f, pathname, nf)
+                sys.stderr.write(msg)
+                sys.stderr.write("\r\n")
             else:
                 newfiles.append(nf)
             of = os.path.join(pathname, f)
