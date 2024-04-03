@@ -86,6 +86,7 @@ class videoinfo:
     def __init__(self) -> None:
         self.streams = []
         self.metadata = {}
+        self.bitrate = None
 
 class audiostreaminfo(streaminfo):
     def __init__(self) -> None:
@@ -121,6 +122,7 @@ class videostreaminfo(streaminfo):
         self.fps = compute(fps) if fps != None else None
         self.pix_fmt = fetchdictchild(streammap, "pix_fmt")
         self.bits_per_raw_sample = fetchdictchild(streammap, "bits_per_raw_sample")
+        self.bitrate = fetchdictchild(streammap, 'format', 'bit_rate')
 
 class subtitlestreaminfo(streaminfo):
     def __init__(self) -> None:
@@ -153,12 +155,37 @@ def probe(filename: str) -> videoinfo:
     jsonstr = __callffprobe(filename)
     jsonobj = json.loads(jsonstr)
     vi = videoinfo()
+    vi.bitrate = fetchdictchild(jsonobj, 'format', 'bit_rate')
     vi.metadata = fetchdictchild(jsonobj, 'format', 'tags')
     streams = fetchdictchild(jsonobj, 'streams')
     vi.streams = [__createsttreaminfo(s) for s in streams]
     if len([x for x in vi.streams if x == None]) > 0:
-        print("none codec in %s" % filename)
+        print("none streams found in %s, removed" % filename)
+        vi.streams = [x for x in vi.streams if x != None]
+    __fixbitrate(vi)
     return vi
+
+def __fixbitrate(vi: videoinfo):
+    videos = []
+    audios = []
+    for st in vi.streams:
+        if st.isvideo():
+            videos.append(st)
+        elif st.isaudio():
+            audios.append(st)
+    if len(videos) > 1 or len(videos) == 0:
+        raise AttributeError("%d videos, unsupported" % len(videos))
+    vst = videos[0]
+    if vst.codec.bitrate == None or vst.codec.bitrate == 0:
+        ast = audios[0]
+        vbr = vi.bitrate
+        if vbr == None:
+            raise AttributeError("Neither metatdata nor video stream contains bit rate")
+        vst.codec.bitrate = int(vbr) - ast.codec.bitrate
+        vi.streams = [vst, ast]
+    else:
+        print(vst.codec.bitrate)
+    pass
     
 def __callffprobe(filename: str) -> str:
     with Popen(['ffprobe', '-i', filename, '-of', 'json', '-show_streams', '-show_format'], stdout=PIPE, stderr=PIPE) as fp:
