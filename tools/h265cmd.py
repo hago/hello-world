@@ -16,11 +16,11 @@ import sys
 from pyffprobe import probe, codec
 
 class pathrunner():
-    def __init__(self, arg, path) -> None:
+    def __init__(self, arg) -> None:
         self.cmds = []
         self.defaultratio = arg.default_bitrate_ratio
         self.brdict ={'h264': arg.h264_bitrate_ratio}
-        self.root = os.path.realpath(path)
+        self.root = os.path.realpath(arg.directory)
         if not os.path.exists(self.root):
             raise FileExistsError('%s not existed or not accessible' % self.root)
 
@@ -89,5 +89,4 @@ if __name__=='__main__':
     parser = buildargparser()
     arg = parser.parse_args()
     print(arg)
-    path = os.path.realpath(sys.argv[1])
-    pathrunner(arg, path).run()
+    pathrunner(arg).run()
