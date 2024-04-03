@@ -7,74 +7,87 @@ directory to an mp4 with video encoded in H.265, with bitrate set as 2 / 3 of th
 and 50% for the other video codecs.
 '''
 
+import argparse
 import math
 import os
 import os.path
 import sys
 
-from pyffprobe import probe
+from pyffprobe import probe, codec
 
-CMDS = []
+class pathrunner():
+    def __init__(self, arg, path) -> None:
+        self.cmds = []
+        self.defaultratio = arg.default_bitrate_ratio
+        self.brdict ={'h264': arg.h264_bitrate_ratio}
+        self.root = os.path.realpath(path)
+        if not os.path.exists(self.root):
+            raise FileExistsError('%s not existed or not accessible' % self.root)
 
-def parsefile(f: str):
-    if f.endswith('.hevc.mp4'):
-        return
-    if not f.endswith(".mp4") and not f.endswith(".mkv"):
-        print("skip file %s" % f)
-        return
-    print("run %s" % f)
-    info = probe(f)
-    for st in info.streams:
-        if not st.isvideo() and not st.isaudio():
-            print("skip codec %s" % st.codec.name)
-            continue
-        if st.isaudio():
-            if st.codec.name not in ('mp3', 'aac'):
-                print('warn: audio codec %s' % st.codec.name)
-            continue
-        if st.codec.name != 'h264':
-            print('warn: skip non-h264 codec: %s' % st.codec.name)
-            continue
-        (fn0, ext) = os.path.splitext(f)
-        fn = fn0.replace('"', '\\"')
-        if st.codec.bitrate == None:
-            print("unknown bit rate: %s for a video stream, skip\r\n" % st.codec.bitrate)
-            continue
-        br265 = __calch265btr(int(st.codec.bitrate))
-        cmd = '''ffmpeg -i "%s%s" -c:v hevc -b:v %dk -c:a copy "%s.hevc.mp4"''' % (fn, ext, br265, fn)
-        print(cmd)
-        CMDS.append(cmd)
-        CMDS.append("sleep 10")
-        break
+    def parsefile(self, f: str):
+        if f.endswith('.hevc.mp4'):
+            return
+        if not f.endswith(".mp4") and not f.endswith(".mkv"):
+            print("skip file %s" % f)
+            return
+        print("run %s" % f)
+        info = probe(f)
+        for st in info.streams:
+            if not st.isvideo() and not st.isaudio():
+                print("skip codec %s" % st.codec.name)
+                continue
+            if st.isaudio():
+                if st.codec.name not in ('mp3', 'aac'):
+                    print('warn: audio codec %s' % st.codec.name)
+                continue
+            (fn0, ext) = os.path.splitext(f)
+            fn = fn0.replace('"', '\\"')
+            if st.codec.bitrate == None:
+                print("unknown bit rate: %s for a video stream, skip\r\n" % st.codec.bitrate)
+                continue
+            br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
+            cmd = '''ffmpeg -i "%s%s" -c:v hevc -b:v %dk -c:a copy "%s.hevc.mp4"''' % (fn, ext, br265, fn)
+            print(cmd)
+            self.cmds.append("#File is encoded by %s with %f" % (st.codec.name, st.codec.bitrate))
+            self.cmds.append(cmd)
+            self.cmds.append("sleep 10")
+            break
 
-def __calch265btr(h264btr: int, ratio = 2 / 3, roundto100kb = True):
-    btr = h264btr * ratio / 1000
-    return btr if not roundto100kb else math.ceil(btr / 100) * 100
+    def __calch265btr(self, codec: codec, originalbtr: int, roundto100kb = True):
+        ratio = self.brdict[codec.name] if codec.name in self.brdict else self.defaultratio
+        btr = originalbtr * ratio / 1000
+        print('ratio %s used, target br set as %f' % (ratio, btr))
+        return btr if not roundto100kb else math.ceil(btr / 100) * 100
 
-def rundir(root):
-    for (p, dirs, files) in os.walk(root):
-        print("enter %s" % p)
-        #print(p, dirs, files)
-        files.sort()
-        for f in files:
-            fn = os.path.join(p, f)
-            parsefile(fn)
-        print("leave %s" % p)
+    def run(self):
+        for (p, dirs, files) in os.walk(self.root):
+            print("enter %s" % p)
+            #print(p, dirs, files)
+            files.sort()
+            for f in files:
+                fn = os.path.join(p, f)
+                self.parsefile(fn)
+            print("leave %s" % p)
+        self.__writesh()
 
-def writesh():
-    with open("chn.sh", "wb") as fp:
-        fp.write(b"#!/bin/sh\n\n")
-        for cmd in CMDS:
-            fp.write(cmd.encode('utf8'))
-            fp.write(b'\n')
-    pass
+    def __writesh(self):
+        with open("chn.sh", "wb") as fp:
+            fp.write(b"#!/bin/sh\n\n")
+            for cmd in self.cmds:
+                fp.write(cmd.encode('utf8'))
+                fp.write(b'\n')
+        pass
+
+def buildargparser():
+    parser = argparse.ArgumentParser(description='Generate ffmpeg commands')
+    parser.add_argument('directory', help = 'the directory to search in')
+    parser.add_argument('-h264br', '--h264-bitrate-ratio', help = 'target bit rate ratio for original H.264 video', default=2/3, type=float)
+    parser.add_argument('-br', '--default-bitrate-ratio', help = 'target bit rate ratio for any other original video codecs', default=0.5, type=float)
+    return parser
 
 if __name__=='__main__':
-    if len(sys.argv) < 2:
-        print('Usage: %s [path]' % sys.argv[0])
-        sys.exit(-1)
+    parser = buildargparser()
+    arg = parser.parse_args()
+    print(arg)
     path = os.path.realpath(sys.argv[1])
-    rundir(path)
-    #print(CMDS)
-    writesh()
-    pass
+    pathrunner(arg, path).run()
