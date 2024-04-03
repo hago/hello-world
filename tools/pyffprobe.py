@@ -156,6 +156,8 @@ def probe(filename: str) -> videoinfo:
     vi.metadata = fetchdictchild(jsonobj, 'format', 'tags')
     streams = fetchdictchild(jsonobj, 'streams')
     vi.streams = [__createsttreaminfo(s) for s in streams]
+    if len([x for x in vi.streams if x == None]) > 0:
+        print("none codec in %s" % filename)
     return vi
     
 def __callffprobe(filename: str) -> str:
