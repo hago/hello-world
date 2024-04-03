@@ -71,7 +71,7 @@ class pathrunner():
         self.__writesh()
 
     def __writesh(self):
-        with open("chn.sh", "wb") as fp:
+        with open("h265.sh", "wb") as fp:
             fp.write(b"#!/bin/sh\n\n")
             for cmd in self.cmds:
                 fp.write(cmd.encode('utf8'))
