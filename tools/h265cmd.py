@@ -15,6 +15,8 @@ import sys
 
 from pyffprobe import probe, codec
 
+VIDEO_FILE_TYPES = ['.mkv', '.mp4', 'avi', '.rmvb']
+
 class pathrunner():
     def __init__(self, arg) -> None:
         self.cmds = []
@@ -27,7 +29,8 @@ class pathrunner():
     def parsefile(self, f: str):
         if f.endswith('.hevc.mp4'):
             return
-        if not f.endswith(".mp4") and not f.endswith(".mkv"):
+        ext = os.path.splitext(f)[1].lower()
+        if ext not in VIDEO_FILE_TYPES:
             print("skip file %s" % f)
             return
         print("run %s" % f)
@@ -40,6 +43,9 @@ class pathrunner():
                 if st.codec.name not in ('mp3', 'aac'):
                     print('warn: audio codec %s' % st.codec.name)
                 continue
+            if st.codec.name == 'hevc':
+                print('%s is encoded using hevc' % f)
+                return
             (fn0, ext) = os.path.splitext(f)
             fn = fn0.replace('"', '\\"')
             if st.codec.bitrate == None:
@@ -88,5 +94,5 @@ def buildargparser():
 if __name__=='__main__':
     parser = buildargparser()
     arg = parser.parse_args()
-    print(arg)
+    #print(arg)
     pathrunner(arg).run()
