@@ -1,11 +1,17 @@
 #!/bin/bash
 
 if [ $# -lt 1 ]; then
-	echo "usage $0 [dir]"
+	echo "usage $0 [-c] dir dir ..."
 	exit 2
 fi
-RED='\033[0;31m'
-GREEN='\033[0;32m'
+if [[ "$1" != "-c" ]]; then
+	RED='\033[0;31m'
+	GREEN='\033[0;32m'
+else
+	shift
+	RED=''
+	GREEN=''
+fi
 IFS=$'\n'
 shopt -s nocasematch
 while (( "$#" )); do
