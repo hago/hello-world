@@ -23,7 +23,7 @@ class pathrunner():
         self.defaultratio = arg.default_bitrate_ratio
         self.brdict ={'h264': arg.h264_bitrate_ratio}
         self.root = os.path.realpath(arg.directory)
-        self.h264subregexes = [re.compile(re.escape(s), re.I) for s in [".h264.", ".x264.", ".avc."]]
+        self.h264subregexes = [re.compile(re.escape(s), re.I) for s in ["h264", "x264", "avc"]]
         if not os.path.exists(self.root):
             raise FileExistsError('%s not existed or not accessible' % self.root)
 
@@ -63,7 +63,7 @@ class pathrunner():
     def __targetname(self, basename: str):
         for reg in self.h264subregexes:
             if reg.search(basename) != None:
-                return reg.sub(".x265", basename)
+                return reg.sub("x265", basename)
         return basename
 
     def __calch265btr(self, codec: codec, originalbtr: int, roundto100kb = True):
