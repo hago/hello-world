@@ -11,7 +11,7 @@ import argparse
 import math
 import os
 import os.path
-import sys
+import re
 
 from pyffprobe import probe, codec
 
@@ -23,6 +23,7 @@ class pathrunner():
         self.defaultratio = arg.default_bitrate_ratio
         self.brdict ={'h264': arg.h264_bitrate_ratio}
         self.root = os.path.realpath(arg.directory)
+        self.h264subregexes = [re.compile(re.escape(s), re.I) for s in [".h264.", ".x264.", ".avc."]]
         if not os.path.exists(self.root):
             raise FileExistsError('%s not existed or not accessible' % self.root)
 
@@ -52,12 +53,18 @@ class pathrunner():
                 print("unknown bit rate: %s for a video stream, skip\r\n" % st.codec.bitrate)
                 continue
             br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
-            cmd = '''ffmpeg -i "%s%s" -c:v hevc -b:v %dk -c:a copy "%s.hevc.mp4"''' % (fn, ext, br265, fn)
+            cmd = '''ffmpeg -i "%s%s" -c:v hevc -b:v %dk -c:a copy "%s.hevc.mp4"''' % (fn, ext, br265, self.__targetname(fn))
             print(cmd)
             self.cmds.append("#File is encoded by %s with %f" % (st.codec.name, st.codec.bitrate))
             self.cmds.append(cmd)
             self.cmds.append("sleep 10")
             break
+
+    def __targetname(self, basename: str):
+        for reg in self.h264subregexes:
+            if reg.search(basename) != None:
+                return reg.sub(".x265", basename)
+        return basename
 
     def __calch265btr(self, codec: codec, originalbtr: int, roundto100kb = True):
         ratio = self.brdict[codec.name] if codec.name in self.brdict else self.defaultratio
