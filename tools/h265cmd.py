@@ -24,6 +24,7 @@ class pathrunner():
         self.brdict ={'h264': arg.h264_bitrate_ratio}
         self.root = os.path.realpath(arg.directory)
         self.h264subregexes = [re.compile(re.escape(s), re.I) for s in ["h264", "x264", "avc"]]
+        self.skiplist = [os.path.realpath(x) for x in arg.skip]
         if not os.path.exists(self.root):
             raise FileExistsError('%s not existed or not accessible' % self.root)
 
@@ -80,6 +81,9 @@ class pathrunner():
             #print(p, dirs, files)
             files.sort()
             for f in files:
+                fullfn = os.path.join(p, f)
+                if fullfn in self.skiplist:
+                    continue
                 fn = os.path.join(p, f)
                 self.parsefile(fn)
             print("leave %s" % p)
@@ -98,6 +102,7 @@ def buildargparser():
     parser.add_argument('directory', help = 'the directory to search in')
     parser.add_argument('-h264br', '--h264-bitrate-ratio', help = 'target bit rate ratio for original H.264 video', default=2/3, type=float)
     parser.add_argument('-br', '--default-bitrate-ratio', help = 'target bit rate ratio for any other original video codecs', default=0.5, type=float)
+    parser.add_argument('-s', '--skip', help = 'skip files', nargs='+')
     return parser
 
 if __name__=='__main__':
