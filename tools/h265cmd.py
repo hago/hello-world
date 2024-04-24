@@ -60,11 +60,13 @@ class pathrunner():
             self.cmds.append("sleep 10")
             break
 
-    def __targetname(self, basename: str):
+    def __targetname(self, filename: str):
+        (path, basename) = os.path.split(filename)
         for reg in self.h264subregexes:
             if reg.search(basename) != None:
-                return reg.sub("x265", basename)
-        return basename
+                newbasename = reg.sub("x265", basename)
+                return os.path.join(path, newbasename)
+        return filename
 
     def __calch265btr(self, codec: codec, originalbtr: int, roundto100kb = True):
         ratio = self.brdict[codec.name] if codec.name in self.brdict else self.defaultratio
