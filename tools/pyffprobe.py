@@ -159,11 +159,20 @@ def probe(filename: str) -> videoinfo:
     vi.metadata = fetchdictchild(jsonobj, 'format', 'tags')
     streams = fetchdictchild(jsonobj, 'streams')
     vi.streams = [__createsttreaminfo(s) for s in streams]
-    if len([x for x in vi.streams if x == None]) > 0:
-        print("none streams found in %s, removed" % filename)
-        vi.streams = [x for x in vi.streams if x != None]
+    if len([x for x in vi.streams if not __filterstream(x)]) > 0:
+        print("unsupported streams found in %s, removed" % filename)
+        vi.streams = [x for x in vi.streams if __filterstream(x)]
     __fixbitrate(vi)
     return vi
+
+def __filterstream(st: streaminfo) -> bool:
+    if st == None:
+        return False
+    elif st.isvideo():
+        SKIP_IMAGE_CODECS = ['png', 'jpg']
+        return st.codec.name not in SKIP_IMAGE_CODECS
+    else:
+        return True
 
 def __fixbitrate(vi: videoinfo):
     videos = []
