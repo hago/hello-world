@@ -61,7 +61,7 @@ class pathrunner():
                 print("unknown bit rate: %s for a video stream, skip\r\n" % st.codec.bitrate)
                 continue
             br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
-            cmd = '''ffmpeg -i "%s%s" -map 0 -c:v hevc -b:v %dk -c:a copy -c:s copy "%s.hevc.%s"''' % (fn, ext, br265, self.__targetname(fn), ext)
+            cmd = '''ffmpeg -i "%s%s" -map 0 -c:v hevc -b:v %dk -c:a copy -c:s copy "%s.hevc%s"''' % (fn, ext, br265, self.__targetname(fn), ext)
             comment = "File is encoded by %s with %f" % (st.codec.name, st.codec.bitrate)
             print(cmd)
             self.cmds.append(command(comment, cmd))
