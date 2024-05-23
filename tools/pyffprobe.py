@@ -44,6 +44,24 @@ def tofloat(v: str, default: float = 0.0) -> float:
         except ValueError:
             return default
 
+'''
+Calc xxxxK(M,G) to integer
+'''
+def calcbitrate(x: str) -> int:
+    l = x[-1:]
+    if l.isdigit():
+        return int(x)
+    else:
+        funcmap = {
+            'k': lambda x: x*1024,
+            'm': lambda x: x*1024*1024,
+            'g': lambda x: x*1024*1024*1024
+            }
+        if l.lower() in funcmap:
+            return funcmap[l.lower()](int(x[:-1]))
+        else:
+            raise ValueError("%s not a bit rate" % x)
+
 class codec:
     def __init__(self) -> None:
         self.name = None
@@ -72,6 +90,19 @@ class streaminfo:
         self.codec = codec()
         self.codec.load(streammap)
         self.metadata = fetchdictchild(streammap, "tags")
+        self.bitrate = fetchdictchild(streammap, 'format', 'bit_rate')
+        if self.bitrate == None or self.bitrate == 0:
+            bpskeys = [
+                ["tags", "BPS"],
+                ["tags", "BPS-eng"],
+                ["tags", "BPSeng"]
+            ]
+            for keys in bpskeys:
+                metabps = fetchdictchild(streammap, *keys)
+                if metabps != None:
+                    self.bitrate = calcbitrate(metabps)
+                    self.codec.bitrate = self.bitrate
+                    break
 
     def isvideo(self):
         return self.codec != None and self.codec.type == 'video'
@@ -122,7 +153,6 @@ class videostreaminfo(streaminfo):
         self.fps = compute(fps) if fps != None else None
         self.pix_fmt = fetchdictchild(streammap, "pix_fmt")
         self.bits_per_raw_sample = fetchdictchild(streammap, "bits_per_raw_sample")
-        self.bitrate = fetchdictchild(streammap, 'format', 'bit_rate')
 
 class subtitlestreaminfo(streaminfo):
     def __init__(self) -> None:
@@ -193,7 +223,8 @@ def __fixbitrate(vi: videoinfo):
         vst.codec.bitrate = int(vbr) - ast.codec.bitrate
         vi.streams = [vst, ast]
     else:
-        print(vst.codec.bitrate)
+        #print(vst.codec.bitrate)
+        pass
     pass
     
 def __callffprobe(filename: str) -> str:
