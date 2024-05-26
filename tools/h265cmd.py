@@ -17,10 +17,11 @@ import re
 from pyffprobe import probe, codec
 
 VIDEO_FILE_TYPES = ['.mkv', '.mp4', 'avi', '.rmvb']
+IMAGE_CODECS_IN_VIDEO_STREAM = ['jpeg2000', 'jpegls', 'mjpeg', 'png', 'sgi', 'tiff', 'webp', 'ppm']
 
 class command:
-    def __init__(self, comment, cmd):
-        self.comment = comment
+    def __init__(self, comments, cmd):
+        self.comments = comments
         self.cmd = cmd
 
 class pathrunner():
@@ -45,28 +46,35 @@ class pathrunner():
             return
         logging.info("run %s", f)
         info = probe(f)
-        for st in info.streams:
-            if not st.isvideo() and not st.isaudio():
-                logging.warning("skip codec %s", st.codec.name)
+        (fn0, ext) = os.path.splitext(f)
+        fn = fn0.replace('"', '\\"')
+        cmd = 'ffmpeg -i "%s%s" -map 0 -c:a copy -c:s copy' % (fn, ext)
+        comments = []
+        vindex = -1
+        for i in range(len(info.streams)):
+            st = info.streams[i]
+            if not st.isvideo():
+                logging.debug("not video stream, skip stream %d", i)
                 continue
-            if st.isaudio():
-                if st.codec.name not in ('mp3', 'aac'):
-                    logging.warning('warn: audio codec %s', st.codec.name)
-                continue
+            vindex += 1
             if st.codec.name == 'hevc':
-                logging.info('%s is encoded using hevc', f)
-                return
-            (fn0, ext) = os.path.splitext(f)
-            fn = fn0.replace('"', '\\"')
+                logging.debug('video stream %d is already encoded using hevc, copy used', i)
+                cmd += ' c:v:%d copy ' % vindex
+                continue
+            if st.codec.name in IMAGE_CODECS_IN_VIDEO_STREAM:
+                logging.debug('video stream %s is image, copy used', i)
+                cmd += ' c:v:%d copy ' % vindex
+                continue
             if st.codec.bitrate == None:
                 logging.error("unknown bit rate: %s for a video stream, skip", st.codec.bitrate)
                 continue
-            br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
-            cmd = '''ffmpeg -i "%s%s" -map 0 -c:v hevc -b:v %dk -metadata:s:v:0 BPS="%dk" -c:a copy -c:s copy "%s.hevc%s"''' % (fn, ext, br265, br265, self.__targetname(fn), ext)
-            comment = "File is encoded by %s with %f" % (st.codec.name, st.codec.bitrate)
-            logging.debug("ffmpeg cli: %s", cmd)
-            self.cmds.append(command(comment, cmd))
-            break
+            else:
+                br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
+                comments.append("Stream %d is encoded by %s with %f%s" % (vindex, st.codec.name, st.codec.bitrate, os.linesep))
+                cmd += ' c:v:%d hevc b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, br265, vindex, br265)
+        cmd += ' "%s.hevc%s"' % (self.__targetname(fn), ext)
+        logging.debug("ffmpeg cli: %s", cmd)
+        self.cmds.append(command(comments, cmd))
 
     def __targetname(self, filename: str):
         (path, basename) = os.path.split(filename)
@@ -107,8 +115,9 @@ class pathrunner():
         with open("h265.sh", "wb") as fp:
             fp.write(b"#!/bin/sh\n\n")
             for cmd in self.cmds:
-                fp.write(('#%s' % cmd.comment).encode(self.enc))
-                fp.write(sep)
+                for comment in cmd.comments:
+                    fp.write(('#%s' % comment).encode(self.enc))
+                    fp.write(sep)
                 fp.write(cmd.cmd.encode(self.enc))
                 fp.write(sep)
                 fp.write('sleep 10'.encode(self.enc))
@@ -119,8 +128,9 @@ class pathrunner():
         sep = '\r\n'.encode(self.enc)
         with open("h265.cmd", "wb") as fp:
             for cmd in self.cmds:
-                fp.write(('REM %s' % cmd.comment).encode(self.enc))
-                fp.write(sep)
+                for comment in cmd.comments:
+                    fp.write(('REM %s' % comment).encode(self.enc))
+                    fp.write(sep)
                 fp.write(cmd.cmd.encode(self.enc))
                 fp.write(sep)
         pass
