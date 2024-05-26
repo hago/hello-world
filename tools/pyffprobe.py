@@ -212,7 +212,7 @@ def __fixbitrate(vi: videoinfo):
             videos.append(st)
         elif st.isaudio():
             audios.append(st)
-    if len(videos) > 1 or len(videos) == 0:
+    if len(videos) == 0:
         raise AttributeError("%d videos, unsupported" % len(videos))
     vst = videos[0]
     if vst.codec.bitrate == None or vst.codec.bitrate == 0:
