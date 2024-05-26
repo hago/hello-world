@@ -8,6 +8,7 @@ and 50% for the other video codecs.
 '''
 
 import argparse
+import logging
 import math
 import os
 import os.path
@@ -40,30 +41,30 @@ class pathrunner():
             return
         ext = os.path.splitext(f)[1].lower()
         if ext not in VIDEO_FILE_TYPES:
-            print("skip file %s" % f)
+            logging.warning("skip file %s", f)
             return
-        print("run %s" % f)
+        logging.info("run %s", f)
         info = probe(f)
         for st in info.streams:
             if not st.isvideo() and not st.isaudio():
-                print("skip codec %s" % st.codec.name)
+                logging.warning("skip codec %s", st.codec.name)
                 continue
             if st.isaudio():
                 if st.codec.name not in ('mp3', 'aac'):
-                    print('warn: audio codec %s' % st.codec.name)
+                    logging.warning('warn: audio codec %s', st.codec.name)
                 continue
             if st.codec.name == 'hevc':
-                print('%s is encoded using hevc' % f)
+                logging.info('%s is encoded using hevc', f)
                 return
             (fn0, ext) = os.path.splitext(f)
             fn = fn0.replace('"', '\\"')
             if st.codec.bitrate == None:
-                print("unknown bit rate: %s for a video stream, skip\r\n" % st.codec.bitrate)
+                logging.error("unknown bit rate: %s for a video stream, skip", st.codec.bitrate)
                 continue
             br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
             cmd = '''ffmpeg -i "%s%s" -map 0 -c:v hevc -b:v %dk -metadata:s:v:0 BPS="%dk" -c:a copy -c:s copy "%s.hevc%s"''' % (fn, ext, br265, br265, self.__targetname(fn), ext)
             comment = "File is encoded by %s with %f" % (st.codec.name, st.codec.bitrate)
-            print(cmd)
+            logging.debug("ffmpeg cli: %s", cmd)
             self.cmds.append(command(comment, cmd))
             break
 
@@ -78,12 +79,12 @@ class pathrunner():
     def __calch265btr(self, codec: codec, originalbtr: int, roundto100kb = True):
         ratio = self.brdict[codec.name] if codec.name in self.brdict else self.defaultratio
         btr = originalbtr * ratio / 1000
-        print('ratio %s used, target br set as %f' % (ratio, btr))
+        logging.info('ratio %s used, target br set as %f' % (ratio, btr))
         return btr if not roundto100kb else math.ceil(btr / 100) * 100
 
     def run(self):
         for (p, dirs, files) in os.walk(self.root):
-            print("enter %s" % p)
+            logging.debug("enter %s" % p)
             #print(p, dirs, files)
             files.sort()
             for f in files:
@@ -92,7 +93,7 @@ class pathrunner():
                     continue
                 fn = os.path.join(p, f)
                 self.parsefile(fn)
-            print("leave %s" % p)
+            logging.debug("leave %s" % p)
         self.__writesh()
 
     def __writesh(self):
@@ -132,10 +133,11 @@ def buildargparser():
     parser.add_argument('-s', '--skip', help = 'skip files', nargs='*')
     parser.add_argument('-w', '--win', help = 'output script in windows bacth', action='store_true', default=False)
     parser.add_argument('-enc', '--encoding', help = 'encoding of the output file', default='utf-8')
+    parser.add_argument('-l', '--log-level', default = logging.INFO, help = '''setting log level: CRITICAL, FATAL, ERROR, WARNING, WARN = WARNING, INFO, DEBUG, NOTSET''')
     return parser
 
 if __name__=='__main__':
     parser = buildargparser()
     arg = parser.parse_args()
-    #print(arg)
+    logging.basicConfig(level=arg.log_level)
     pathrunner(arg).run()
