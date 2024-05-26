@@ -190,7 +190,7 @@ def probe(filename: str) -> videoinfo:
     streams = fetchdictchild(jsonobj, 'streams')
     vi.streams = [__createsttreaminfo(s) for s in streams]
     if len([x for x in vi.streams if not __filterstream(x)]) > 0:
-        print("unsupported streams found in %s, removed" % filename)
+        logging.error("unsupported streams found in %s, removed" % filename)
         vi.streams = [x for x in vi.streams if __filterstream(x)]
     __fixbitrate(vi)
     return vi
@@ -223,8 +223,7 @@ def __fixbitrate(vi: videoinfo):
         vst.codec.bitrate = int(vbr) - ast.codec.bitrate
         vi.streams = [vst, ast]
     else:
-        #print(vst.codec.bitrate)
-        pass
+        logging.debug("codec bitrate: %s", vst.codec.bitrate)
     pass
     
 def __callffprobe(filename: str) -> str:
@@ -276,19 +275,21 @@ def buildargparser():
     parser.add_argument('-br', '--bit-rate', help = 'print bit rate', action='store_true', default=False)
     parser.add_argument('-stf', '--stream-type-filter', help = 'stream type filter', default='avs')
     parser.add_argument('-brh', '--bit-rate-humanfriendly', help = 'display bitrate values human friendly', action='store_true')
+    parser.add_argument('-l', '--log-level', default = logging.INFO, help = '''setting log level: CRITICAL, FATAL, ERROR, WARNING, WARN = WARNING, INFO, DEBUG, NOTSET''')
     return parser
 
 if __name__=='''__main__''':
     parser = buildargparser()
     arg = parser.parse_args()
+    logging.basicConfig(level=arg.log_level)
     if not os.path.exists(arg.filename) or not os.path.isfile(arg.filename):
         logging.error("%s not found or invalid", arg.filename)
         sys.exit(-1)
     vi = probe(arg.filename)
     if arg.bit_rate:
         streams = __filterstreams(arg, vi)
-        print(arg.filename)
+        logging.debug("probing file: %s", arg.filename)
         for s in streams:
-            print('%s: %s %s' % (s.codec.type, s.codec.name, __formatbitrate(arg, s.codec.bitrate)))
+            logging.info('%s: %s %s', s.codec.type, s.codec.name, __formatbitrate(arg, s.codec.bitrate))
     else:
-        print(json.dumps(vi, default=lambda s: s.__dict__, indent = 4))
+        logging.info("raw json: \n%s", json.dumps(vi, default=lambda s: s.__dict__, indent = 4))
