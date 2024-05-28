@@ -62,11 +62,11 @@ class pathrunner():
             vindex += 1
             if st.codec.name == 'hevc':
                 logging.debug('video stream %d is already encoded using hevc, copy used', i)
-                cmd += ' c:v:%d copy ' % vindex
+                cmd += ' -c:v:%d copy ' % vindex
                 continue
             if st.codec.name in IMAGE_CODECS_IN_VIDEO_STREAM:
                 logging.debug('video stream %s is image, copy used', i)
-                cmd += ' c:v:%d copy ' % vindex
+                cmd += ' -c:v:%d copy ' % vindex
                 continue
             if st.codec.bitrate == None:
                 logging.error("unknown bit rate: %s for a video stream, skip", st.codec.bitrate)
@@ -74,7 +74,7 @@ class pathrunner():
             else:
                 br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
                 comments.append("Stream %d is encoded by %s with %f" % (vindex, st.codec.name, st.codec.bitrate))
-                cmd += ' c:v:%d hevc b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, br265, vindex, br265)
+                cmd += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, br265, vindex, br265)
         cmd += ' "%s.hevc%s"' % (self.__targetname(fn), ext)
         logging.debug("ffmpeg cli: %s", cmd)
         self.cmds.append(command(comments, cmd))
