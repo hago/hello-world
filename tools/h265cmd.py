@@ -115,7 +115,7 @@ class pathrunner():
 
     def __writebash(self):
         sep = '\n'.encode(self.enc)
-        with open("h265.sh", "wb") as fp:
+        with open(os.path.join(self.target, "h265.sh"), "wb") as fp:
             fp.write(b"#!/bin/sh\n\n")
             for cmd in self.cmds:
                 for comment in cmd.comments:
@@ -130,7 +130,7 @@ class pathrunner():
 
     def __writecmd(self):
         sep = '\r\n'.encode(self.enc)
-        with open("h265.cmd", "wb") as fp:
+        with open(os.path.join(self.target, "h265.cmd"), "wb") as fp:
             for cmd in self.cmds:
                 for comment in cmd.comments:
                     fp.write(('REM %s' % comment).encode(self.enc))
@@ -156,4 +156,5 @@ if __name__=='__main__':
     parser = buildargparser()
     arg = parser.parse_args()
     logging.basicConfig(level=arg.log_level)
+    logging.debug("arg %s", arg)
     pathrunner(arg).run()
