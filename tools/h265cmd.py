@@ -87,11 +87,11 @@ class pathrunner():
                 return os.path.join(self.target, newbasename)
         return filename
 
-    def __calch265btr(self, codec: codec, originalbtr: int, roundto100kb = True):
+    def __calch265btr(self, codec: codec, originalbtr: int):
         ratio = self.brdict[codec.name] if codec.name in self.brdict else self.defaultratio
-        btr = originalbtr * ratio / 1000
+        btr = int(originalbtr * ratio)
         logging.info('ratio %s used, target br set as %f' % (ratio, btr))
-        return btr if not roundto100kb else math.ceil(btr / 100) * 100
+        return btr
 
     def run(self):
         for (p, dirs, files) in os.walk(self.root):
