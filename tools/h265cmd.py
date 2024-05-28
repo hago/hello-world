@@ -34,8 +34,11 @@ class pathrunner():
         self.skiplist = [] if arg.skip==None else [os.path.realpath(x) for x in arg.skip]
         self.bash = not arg.win
         self.enc = arg.encoding
+        self.target = os.path.realpath(arg.target)
         if not os.path.exists(self.root):
-            raise FileExistsError('%s not existed or not accessible' % self.root)
+            raise FileExistsError('source path %s not existed or not accessible' % self.root)
+        if not os.path.exists(self.target):
+            raise FileExistsError('target path %s not existed or not accessible' % self.target)
 
     def parsefile(self, f: str):
         if f.endswith('.hevc.mp4'):
@@ -77,11 +80,11 @@ class pathrunner():
         self.cmds.append(command(comments, cmd))
 
     def __targetname(self, filename: str):
-        (path, basename) = os.path.split(filename)
+        (srcpath, basename) = os.path.split(filename)
         for reg in self.h264subregexes:
             if reg.search(basename) != None:
                 newbasename = reg.sub("x265", basename)
-                return os.path.join(path, newbasename)
+                return os.path.join(self.target, newbasename)
         return filename
 
     def __calch265btr(self, codec: codec, originalbtr: int, roundto100kb = True):
@@ -144,6 +147,7 @@ def buildargparser():
     parser.add_argument('-w', '--win', help = 'output script in windows bacth', action='store_true', default=False)
     parser.add_argument('-enc', '--encoding', help = 'encoding of the output file', default='utf-8')
     parser.add_argument('-l', '--log-level', default = logging.INFO, help = '''setting log level: CRITICAL, FATAL, ERROR, WARNING, WARN = WARNING, INFO, DEBUG, NOTSET''')
+    parser.add_argument("-t", "--target", default = './',  help='The target path where to create script file and to store target x265 files by the script')
     return parser
 
 if __name__=='__main__':
