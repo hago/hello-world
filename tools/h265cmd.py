@@ -73,7 +73,7 @@ class pathrunner():
                 continue
             else:
                 br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
-                comments.append("Stream %d is encoded by %s with %f%s" % (vindex, st.codec.name, st.codec.bitrate, os.linesep))
+                comments.append("Stream %d is encoded by %s with %f" % (vindex, st.codec.name, st.codec.bitrate))
                 cmd += ' c:v:%d hevc b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, br265, vindex, br265)
         cmd += ' "%s.hevc%s"' % (self.__targetname(fn), ext)
         logging.debug("ffmpeg cli: %s", cmd)
@@ -121,6 +121,7 @@ class pathrunner():
                 for comment in cmd.comments:
                     fp.write(('#%s' % comment).encode(self.enc))
                     fp.write(sep)
+                fp.write(sep)
                 fp.write(cmd.cmd.encode(self.enc))
                 fp.write(sep)
                 fp.write('sleep 10'.encode(self.enc))
@@ -134,6 +135,7 @@ class pathrunner():
                 for comment in cmd.comments:
                     fp.write(('REM %s' % comment).encode(self.enc))
                     fp.write(sep)
+                fp.write(sep)
                 fp.write(cmd.cmd.encode(self.enc))
                 fp.write(sep)
         pass
