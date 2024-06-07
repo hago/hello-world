@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 # vim: set fileencoding: UTF-8 -*-
 
-from json import loads
-from urllib.request import quote, Request, build_opener, HTTPCookieProcessor
+import logging
+import os.path
+import sys
+
+import openpyxl, xlwt
+
+from argparse import ArgumentParser
 from http.cookiejar import CookieJar
+from json import loads
+from time import strftime
+from urllib.request import quote, Request, build_opener, HTTPCookieProcessor
 
 class productinfo:
     def __init__(self) -> None:
@@ -70,6 +78,7 @@ def parse(jsonstr: str)->list:
     return [__createproduct(raw) for raw in list1]
 
 def __createproduct(raw: dict)->productinfo:
+    logging.debug("parsing: %s", raw)
     p = productinfo()
     p.raw = raw
     p.id = raw['cltpro01id']
@@ -79,7 +88,75 @@ def __createproduct(raw: dict)->productinfo:
     p.price = raw['cltprc05007']
     return p
 
-s=querier().query('猪肉')
-products = parse(s)
-for p in products:
-    print(p)
+class prod2query:
+    def __init__(self) -> None:
+        self.__data = {}
+
+    def addcategory(self, cat: str):
+        self.__data[cat] = []
+
+    def addproduct(self, cat: str, product: str):
+        if not cat in self.__data:
+            self.addcategory(cat)
+        self.__data[cat].append(product)
+
+    def categories(self)->list:
+        return list(self.__data.keys())
+    
+    def products(self, cat: str):
+        return self.__data[cat]
+    
+    def listall(self) -> list:
+        l = []
+        for cat in self.categories():
+            products = self.products(cat)
+            for p in products:
+                l.append((cat, p))
+        return l
+    
+    def __str__(self) -> str:
+        return self.__data.__str__()
+
+def load(infile: str)->list:
+    try:
+        book = openpyxl.open(infile)
+        sh = book[book.sheetnames[0]]
+        p = prod2query()
+        colnumbers = list(range(2, sh.max_column + 1))
+        rownumbers = list(range(2, sh.max_row + 1))
+        for i in colnumbers:
+            cat = sh.cell(1, i).value
+            if cat == None or cat.strip() == '':
+                logging.debug("skip column %d", i)
+                continue
+            logging.debug('col %d: "%s"', i, cat)
+            p.addcategory(cat)
+            for j in rownumbers:
+                name = sh.cell(j, i).value
+                if name == None or name.strip() == '':
+                    logging.debug("skip column %d row %d", i, j)
+                    continue
+                p.addproduct(cat, name)
+        return p.listall()
+    finally:
+        book.close
+
+if __name__=='__main__':
+    parser = ArgumentParser()
+    parser.add_argument("-i", "--input", required=True, help="product names to query")
+    parser.add_argument("-o", "--output", help="name of excel file containing product info")
+    parser.add_argument('-l', '--log-level', default = logging.INFO, help = '''setting log level: CRITICAL, FATAL, ERROR, WARNING, WARN = WARNING, INFO, DEBUG, NOTSET''')
+    arg = parser.parse_args()
+    logging.basicConfig(level=arg.log_level)
+    logging.debug("arg %s", arg)
+    f = os.path.realpath(arg.input)
+    if not os.path.exists(f):
+        logging.error("input file: %s not found", f)
+        sys.exit(-1)
+    l = load(f)
+    print(l)
+    # of = os.path.realpath(strftime('%Y%m%d%H%M%S.xlsx') if arg.output == None else arg.output)
+    # s=querier().query('猪肉')
+    # products = parse(s)
+    # for p in products:
+    #     print(p)
