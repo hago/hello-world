@@ -5,7 +5,11 @@ import logging
 import os.path
 import sys
 
-import openpyxl, xlwt
+import openpyxl
+import openpyxl.worksheet.worksheet
+import openpyxl.worksheet
+import openpyxl.workbook
+import openpyxl.styles.fonts
 
 from argparse import ArgumentParser
 from http.cookiejar import CookieJar
@@ -31,18 +35,24 @@ class querier():
         self.__REFER = '''https://www.cdprice.cn/price/homePageAction!getArticle.do?title=%s'''
         self.__cookiejar = CookieJar()
         self.__opener = build_opener(HTTPCookieProcessor(self.__cookiejar))
+        self.__pageloaded = False
+
+    def __loadpage(self, product: str) -> str:
+        referurl = self.__REFER % quote(quote(product))
+        if not self.__pageloaded:
+            header = {
+                'Referer': 'https://www.cdprice.cn/',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0'
+            }
+            req = Request(referurl, method='GET', headers=header)
+            with self.__opener.open(req) as rsp:
+                pass
+            self.__pageloaded = True
+        return referurl
 
     def query(self, product: str)->str:
-        referurl = self.__REFER % quote(quote(product))
-        header = {
-            'Referer': 'https://www.cdprice.cn/',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0'
-        }
-        req = Request(referurl, method='GET', headers=header)
-        with self.__opener.open(req) as rsp:
-            pass
         data = ('title=%s' % quote(product)).encode('utf-8')
-        data = b'''title=%E7%8C%AA%E8%82%89'''
+        referurl = self.__loadpage(product)
         header = {
             'Referer': referurl,
             'Host': 'www.cdprice.cn',
@@ -106,6 +116,9 @@ class prod2query:
     def products(self, cat: str):
         return self.__data[cat]
     
+    '''
+    return tuple (品类，名称)
+    '''
     def listall(self) -> list:
         l = []
         for cat in self.categories():
@@ -141,6 +154,31 @@ def load(infile: str)->list:
     finally:
         book.close
 
+def output(data: list, outfile: str):
+    try:
+        book = openpyxl.workbook.workbook.Workbook()
+        sheetname = '查询结果'
+        st: openpyxl.worksheet.worksheet.Worksheet = book.create_sheet(sheetname, 0)
+        st.append(['品类', '查询词', 'id', '名称', '价格', '单位', '查询日期'])
+        ftbold = openpyxl.styles.fonts.Font(bold=True)
+        for row in st["A1": "G1"]:
+            for cell in row:
+                cell.font = ftbold
+        ftred = openpyxl.styles.fonts.Font(color='00ff0000')
+        for row in st["A1": "B1"]:
+            for cell in row:
+                cell.font = ftred
+        ftgreen = openpyxl.styles.fonts.Font(color='0000ff00')
+        for row in st["C1": "G1"]:
+            for cell in row:
+                cell.font = ftgreen
+        for d in data:
+            p: productinfo = d[2]
+            st.append([d[0], d[1], p.id, p.name, p.price, p.unit, p.date])
+        book.save(outfile)
+    finally:
+        book.close
+
 if __name__=='__main__':
     parser = ArgumentParser()
     parser.add_argument("-i", "--input", required=True, help="product names to query")
@@ -154,9 +192,13 @@ if __name__=='__main__':
         logging.error("input file: %s not found", f)
         sys.exit(-1)
     l = load(f)
-    print(l)
-    # of = os.path.realpath(strftime('%Y%m%d%H%M%S.xlsx') if arg.output == None else arg.output)
-    # s=querier().query('猪肉')
-    # products = parse(s)
-    # for p in products:
-    #     print(p)
+    logging.debug('parsing result: %s', l)
+    q = querier()
+    r = []
+    for (cate, keyword) in l:
+        logging.info('query %s %s', cate, keyword)
+        json = q.query(keyword)
+        for product in parse(json):
+            r.append((cate, keyword, product))
+    of = os.path.realpath(strftime('%Y%m%d%H%M%S.xlsx') if arg.output == None else arg.output)
+    output(r, of)
