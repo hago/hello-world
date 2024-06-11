@@ -28,7 +28,8 @@ class pathrunner():
     def __init__(self, arg) -> None:
         self.cmds = []
         self.defaultratio = arg.default_bitrate_ratio
-        self.brdict ={'h264': arg.h264_bitrate_ratio}
+        self.brdict = {'h264': arg.h264_bitrate_ratio}
+        self.x265br = arg.x265_bitrate_ratio
         self.root = os.path.realpath(arg.directory)
         self.h264subregexes = [re.compile(re.escape(s), re.I) for s in ["h264", "x264", "avc"]]
         self.skiplist = [] if arg.skip==None else [os.path.realpath(x) for x in arg.skip]
@@ -61,8 +62,14 @@ class pathrunner():
                 continue
             vindex += 1
             if st.codec.name == 'hevc':
-                logging.debug('video stream %d is already encoded using hevc, copy used', i)
-                cmd += ' -c:v:%d copy ' % vindex
+                if self.x265br == None:
+                    logging.debug('video stream %d is already encoded using hevc, copy used', i)
+                    cmd += ' -c:v:%d copy ' % vindex
+                else:
+                    logging.debug('video stream %d is to re-encode in hevc', i)
+                    x265br = int(st.codec.bitrate * self.x265br)
+                    comments.append("Stream %d is encoded by hevc with %f" % (vindex, st.codec.bitrate))
+                    cmd += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, x265br, vindex, x265br)
                 continue
             if st.codec.name in IMAGE_CODECS_IN_VIDEO_STREAM:
                 logging.debug('video stream %s is image, copy used', i)
@@ -144,6 +151,7 @@ def buildargparser():
     parser = argparse.ArgumentParser(description='Generate a script which run ffmpeg to encode video files in a directory with hevc.')
     parser.add_argument('directory', help = 'the directory to search in')
     parser.add_argument('-h264br', '--h264-bitrate-ratio', help = 'target bit rate ratio for original H.264 video', default=2/3, type=float)
+    parser.add_argument('-x265br', '--x265-bitrate-ratio', help = 'target bit rate ratio for original X.265 video', default=None, type=float)
     parser.add_argument('-br', '--default-bitrate-ratio', help = 'target bit rate ratio for any other original video codecs', default=0.5, type=float)
     parser.add_argument('-s', '--skip', help = 'skip files', nargs='*')
     parser.add_argument('-w', '--win', help = 'output script in windows bacth', action='store_true', default=False)
