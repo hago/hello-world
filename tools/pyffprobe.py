@@ -198,9 +198,6 @@ def probe(filename: str) -> videoinfo:
 def __filterstream(st: streaminfo) -> bool:
     if st == None:
         return False
-    elif st.isvideo():
-        SKIP_IMAGE_CODECS = ['png', 'jpg']
-        return st.codec.name not in SKIP_IMAGE_CODECS
     else:
         return True
 
