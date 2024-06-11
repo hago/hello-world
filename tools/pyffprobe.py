@@ -228,7 +228,7 @@ def __fixbitrate(vi: videoinfo):
     
 def __callffprobe(filename: str) -> str:
     with Popen(['ffprobe', '-i', filename, '-of', 'json', '-show_streams', '-show_format'], stdout=PIPE, stderr=PIPE) as fp:
-        data = fp.stdout.read()
+        data, err = fp.communicate()
         return data.decode()
 
 def __escapefn(fn: str):
