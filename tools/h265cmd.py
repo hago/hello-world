@@ -36,6 +36,7 @@ class pathrunner():
         self.bash = not arg.win
         self.enc = arg.encoding
         self.target = os.path.realpath(arg.target)
+        self.podman = arg.podman
         if not os.path.exists(self.root):
             raise FileExistsError('source path %s not existed or not accessible' % self.root)
         if not os.path.exists(self.target):
@@ -91,7 +92,7 @@ class pathrunner():
         for reg in self.h264subregexes:
             if reg.search(basename) != None:
                 newbasename = reg.sub("x265", basename)
-                return os.path.join(self.target, newbasename)
+                return os.path.join(self.target, newbasename) if not self.podman else os.path.join("/config", newbasename)
         return filename
 
     def __calch265btr(self, codec: codec, originalbtr: int):
@@ -158,6 +159,7 @@ def buildargparser():
     parser.add_argument('-enc', '--encoding', help = 'encoding of the output file', default='utf-8')
     parser.add_argument('-l', '--log-level', default = logging.INFO, help = '''setting log level: CRITICAL, FATAL, ERROR, WARNING, WARN = WARNING, INFO, DEBUG, NOTSET''')
     parser.add_argument("-t", "--target", default = './',  help='The target path where to create script file and to store target x265 files by the script')
+    parser.add_argument("-p", "--podman", required=False, action='store_true',  help='generate commands using containers, podman or docker')
     return parser
 
 if __name__=='__main__':
