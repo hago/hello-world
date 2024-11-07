@@ -14,7 +14,7 @@ import os
 import os.path
 import re
 
-from pyffprobe import probe, codec
+from pyffprobe import probe, codec, videoinfo
 
 VIDEO_FILE_TYPES = ['.mkv', '.mp4', 'avi', '.rmvb']
 IMAGE_CODECS_IN_VIDEO_STREAM = ['jpeg2000', 'jpegls', 'mjpeg', 'png', 'sgi', 'tiff', 'webp', 'ppm']
@@ -31,7 +31,7 @@ class pathrunner():
         self.brdict = {'h264': arg.h264_bitrate_ratio}
         self.x265br = arg.x265_bitrate_ratio
         self.root = os.path.realpath(arg.directory)
-        self.h264subregexes = [re.compile(re.escape(s), re.I) for s in ["h264", "x264", "avc"]]
+        self.h264subregexes = [re.compile(re.escape(s), re.I) for s in ["h264", "x264", "avc", "h.264"]]
         self.skiplist = [] if arg.skip==None else [os.path.realpath(x) for x in arg.skip]
         self.bash = not arg.win
         self.enc = arg.encoding
@@ -51,11 +51,24 @@ class pathrunner():
             return
         logging.info("run %s", f)
         info = probe(f)
-        (fn0, ext) = os.path.splitext(f)
-        fn = fn0.replace('"', '\\"')
-        cmd = 'ffmpeg -i "%s%s" -map 0 -c:a copy -c:s copy' % (fn, ext)
+        (codecstr, comments) = self.__createcodecoptions(info)
+        if not self.podman:
+            cmd = 'ffmpeg -i "%s" %s "%s"' % (self.__escapefn(f), codecstr, self.__targetname(f))
+        else:
+            (fpath, f0) = os.path.split(f)
+            dest = self.__targetrawname(f0)
+            cmd = 'podman run --rm -v "%s":/config linuxserver/ffmpeg -i "/config/%s" %s "/config/%s"' % \
+                (self.__escapefn(fpath), self.__escapefn(f0), codecstr, self.__escapefn(dest))
+        logging.debug("ffmpeg cli: %s", cmd)
+        self.cmds.append(command(comments, cmd))
+
+    def __escapefn(self, f:str)->str:
+        return f.replace('"', '\\"')
+
+    def __createcodecoptions(self, info: videoinfo) -> tuple[str, list]:
         comments = []
         vindex = -1
+        codecoptstr = "-map 0 -c:a copy -c:s copy"
         for i in range(len(info.streams)):
             st = info.streams[i]
             if not st.isvideo():
@@ -65,16 +78,16 @@ class pathrunner():
             if st.codec.name == 'hevc':
                 if self.x265br == None:
                     logging.debug('video stream %d is already encoded using hevc, copy used', i)
-                    cmd += ' -c:v:%d copy ' % vindex
+                    codecoptstr += ' -c:v:%d copy ' % vindex
                 else:
                     logging.debug('video stream %d is to re-encode in hevc', i)
                     x265br = int(st.codec.bitrate * self.x265br)
                     comments.append("Stream %d is encoded by hevc with %f" % (vindex, st.codec.bitrate))
-                    cmd += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, x265br, vindex, x265br)
+                    codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, x265br, vindex, x265br)
                 continue
             if st.codec.name in IMAGE_CODECS_IN_VIDEO_STREAM:
                 logging.debug('video stream %s is image, copy used', i)
-                cmd += ' -c:v:%d copy ' % vindex
+                codecoptstr += ' -c:v:%d copy ' % vindex
                 continue
             if st.codec.bitrate == None:
                 logging.error("unknown bit rate: %s for a video stream, skip", st.codec.bitrate)
@@ -82,18 +95,23 @@ class pathrunner():
             else:
                 br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
                 comments.append("Stream %d is encoded by %s with %f" % (vindex, st.codec.name, st.codec.bitrate))
-                cmd += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, br265, vindex, br265)
-        cmd += ' "%s.hevc%s"' % (self.__targetname(fn), ext)
-        logging.debug("ffmpeg cli: %s", cmd)
-        self.cmds.append(command(comments, cmd))
+                codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, br265, vindex, br265)
+        return (codecoptstr, comments)
 
-    def __targetname(self, filename: str):
+    def __targetname(self, filename: str)->str:
         (srcpath, basename) = os.path.split(filename)
+        return os.path.join(self.target, self.__targetrawname(basename))
+    
+    def __targetrawname(self, rawname: str)->str:
         for reg in self.h264subregexes:
-            if reg.search(basename) != None:
-                newbasename = reg.sub("x265", basename)
-                return os.path.join(self.target, newbasename)
-        return filename
+            if reg.search(rawname) != None:
+                newname = reg.sub("x265", rawname)
+                return self.__addx265inname(newname)
+        return self.__addx265inname(rawname)
+    
+    def __addx265inname(self, name:str) -> str:
+        (fn, ext) = os.path.splitext(name)
+        return "%s.hevc%s" % (fn, ext)
 
     def __calch265btr(self, codec: codec, originalbtr: int):
         ratio = self.brdict[codec.name] if codec.name in self.brdict else self.defaultratio
