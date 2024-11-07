@@ -92,7 +92,7 @@ class pathrunner():
         for reg in self.h264subregexes:
             if reg.search(basename) != None:
                 newbasename = reg.sub("x265", basename)
-                return os.path.join(self.target, newbasename) if not self.podman else os.path.join("/config", newbasename)
+                return os.path.join(self.target, newbasename)
         return filename
 
     def __calch265btr(self, codec: codec, originalbtr: int):
