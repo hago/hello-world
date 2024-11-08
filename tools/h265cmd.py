@@ -8,8 +8,8 @@ and 50% for the other video codecs.
 '''
 
 import argparse
+import fnmatch
 import logging
-import math
 import os
 import os.path
 import re
@@ -37,6 +37,7 @@ class pathrunner():
         self.enc = arg.encoding
         self.target = os.path.realpath(arg.target)
         self.podman = arg.podman
+        self.filterfunc = lambda fn: True if len(arg.filter)==0 else any([fnmatch.fnmatch(fn, p) for p in arg.filter])
         if not os.path.exists(self.root):
             raise FileExistsError('source path %s not existed or not accessible' % self.root)
         if not os.path.exists(self.target):
@@ -125,6 +126,9 @@ class pathrunner():
             #print(p, dirs, files)
             files.sort()
             for f in files:
+                if not self.filterfunc(f):
+                    logging.debug("skip %s" % f)
+                    continue
                 fullfn = os.path.join(p, f)
                 if fullfn in self.skiplist:
                     continue
@@ -179,6 +183,7 @@ def buildargparser():
     parser.add_argument('-l', '--log-level', default = logging.INFO, help = '''setting log level: CRITICAL, FATAL, ERROR, WARNING, WARN = WARNING, INFO, DEBUG, NOTSET''')
     parser.add_argument("-t", "--target", default = './',  help='The target path where to create script file and to store target x265 files by the script')
     parser.add_argument("-p", "--podman", required=False, action='store_true',  help='generate commands using containers, podman or docker')
+    parser.add_argument("-ft", "--filter", required=False, action='append', help='patterns to filter file names', default=[])
     return parser
 
 if __name__=='__main__':
