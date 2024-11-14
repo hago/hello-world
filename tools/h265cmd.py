@@ -166,8 +166,8 @@ class pathrunner():
                 for comment in cmd.comments:
                     fp.write(('REM %s' % comment).encode(self.enc))
                     fp.write(sep)
-                fp.write(sep)
                 fp.write(cmd.cmd.encode(self.enc))
+                fp.write(sep)
                 fp.write(sep)
         pass
 
