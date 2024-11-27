@@ -8,7 +8,6 @@ and 50% for the other video codecs.
 '''
 
 import argparse
-import fnmatch
 import logging
 import os
 import os.path
@@ -37,7 +36,7 @@ class pathrunner():
         self.enc = arg.encoding
         self.target = os.path.realpath(arg.target)
         self.podman = arg.podman
-        self.filterfunc = lambda fn: True if len(arg.filter)==0 else any([fnmatch.fnmatch(fn, p) for p in arg.filter])
+        self.filterfunc = lambda fn: True if len(arg.filter)==0 else any([re.search(p, fn, re.I) != None for p in arg.filter])
         if not os.path.exists(self.root):
             raise FileExistsError('source path %s not existed or not accessible' % self.root)
         if not os.path.exists(self.target):
@@ -173,7 +172,7 @@ class pathrunner():
 
 def buildargparser():
     parser = argparse.ArgumentParser(description='Generate a script which run ffmpeg to encode video files in a directory with hevc.')
-    parser.add_argument('directory', help = 'the directory to search in')
+    parser.add_argument('-d', '--directory', help = 'the directory to search in', required=True)
     parser.add_argument('-h264br', '--h264-bitrate-ratio', help = 'target bit rate ratio for original H.264 video', default=2/3, type=float)
     parser.add_argument('-x265br', '--x265-bitrate-ratio', help = 'target bit rate ratio for original X.265 video', default=None, type=float)
     parser.add_argument('-br', '--default-bitrate-ratio', help = 'target bit rate ratio for any other original video codecs', default=0.5, type=float)
@@ -183,7 +182,7 @@ def buildargparser():
     parser.add_argument('-l', '--log-level', default = logging.INFO, help = '''setting log level: CRITICAL, FATAL, ERROR, WARNING, WARN = WARNING, INFO, DEBUG, NOTSET''')
     parser.add_argument("-t", "--target", default = './',  help='The target path where to create script file and to store target x265 files by the script')
     parser.add_argument("-p", "--podman", required=False, action='store_true',  help='generate commands using containers, podman or docker')
-    parser.add_argument("-ft", "--filter", required=False, action='append', help='patterns to filter file names', default=[])
+    parser.add_argument("-ft", "--filter", required=False, nargs='*', help='patterns to filter file names', default=[])
     return parser
 
 if __name__=='__main__':
