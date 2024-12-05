@@ -53,7 +53,8 @@ class pathrunner():
         info = probe(f)
         (codecstr, comments) = self.__createcodecoptions(info)
         if not self.podman:
-            cmd = 'ffmpeg -i "%s" %s "%s"' % (self.__escapefn(f), codecstr, self.__targetname(f))
+            dest = self.__targetname(f)
+            cmd = 'ffmpeg -i "%s" %s "%s"' % (self.__escapefn(f), codecstr, self.__escapefn(dest))
         else:
             (fpath, f0) = os.path.split(f)
             dest = self.__targetrawname(f0)
@@ -100,7 +101,11 @@ class pathrunner():
 
     def __targetname(self, filename: str)->str:
         (srcpath, basename) = os.path.split(filename)
-        return os.path.join(self.target, self.__targetrawname(basename))
+        relpath = os.path.relpath(srcpath, self.root)
+        targetpath = os.path.realpath(os.path.join(self.target, relpath))
+        if not os.path.exists(targetpath):
+            os.makedirs(targetpath)
+        return os.path.join(targetpath, self.__targetrawname(basename))
     
     def __targetrawname(self, rawname: str)->str:
         for reg in self.h264subregexes:
