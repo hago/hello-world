@@ -72,6 +72,8 @@ class pathrunner():
         codecoptstr = "-map 0 -c:a copy -c:s copy"
         for i in range(len(info.streams)):
             st = info.streams[i]
+            if st.isaudio():
+                comments.append("audio is encoded with %s at bit rate %d" % (st.codec.name, st.codec.bitrate))
             if not st.isvideo():
                 logging.debug("not video stream, skip stream %d", i)
                 continue
