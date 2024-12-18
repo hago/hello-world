@@ -127,10 +127,11 @@ class pathrunner():
         return btr
 
     def run(self):
-        for (p, dirs, files) in os.walk(self.root):
+        #for (p, dirs, files) in os.walk(self.root):
+        for (p, dirs, files) in self.__walk(self.root):
             logging.debug("enter %s" % p)
             #print(p, dirs, files)
-            files.sort()
+            #files.sort()
             for f in files:
                 if not self.filterfunc(f):
                     logging.debug("skip %s" % f)
@@ -142,6 +143,28 @@ class pathrunner():
                 self.parsefile(fn)
             logging.debug("leave %s" % p)
         self.__writesh()
+
+    def __walk(self, path: str) -> list[tuple[str, list[str], list[str]]]:
+        stack = [path]
+        ret = []
+        while len(stack) > 0:
+            p = stack.pop()
+            dirs = []
+            files = []
+            for i in os.scandir(p):
+                #print(i)
+                if i.is_dir():
+                    dirs.append(i.name)
+                elif i.is_file():
+                    files.append(i.name)
+                else:
+                    logging.warning('unknown stat %s of %s' % (i.stat(), i.path))
+            dirs.sort()
+            files.sort()
+            ret.append((p, dirs, files))
+            dirs.reverse()
+            stack.extend([os.path.join(path, d) for d in dirs])
+        return ret
 
     def __writesh(self):
         if self.bash:
