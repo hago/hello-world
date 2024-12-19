@@ -129,8 +129,6 @@ class pathrunner():
     def run(self):
         #for (p, dirs, files) in os.walk(self.root):
         for (p, dirs, files) in self.__walk(self.root):
-            logging.debug("enter %s" % p)
-            #print(p, dirs, files)
             #files.sort()
             for f in files:
                 if not self.filterfunc(f):
@@ -141,7 +139,6 @@ class pathrunner():
                     continue
                 fn = os.path.join(p, f)
                 self.parsefile(fn)
-            logging.debug("leave %s" % p)
         self.__writesh()
 
     def __walk(self, path: str) -> list[tuple[str, list[str], list[str]]]:
@@ -149,6 +146,7 @@ class pathrunner():
         ret = []
         while len(stack) > 0:
             p = stack.pop()
+            logging.debug("enter %s" % p)
             dirs = []
             files = []
             for i in os.scandir(p):
@@ -163,7 +161,8 @@ class pathrunner():
             files.sort()
             ret.append((p, dirs, files))
             dirs.reverse()
-            stack.extend([os.path.join(path, d) for d in dirs])
+            stack.extend([os.path.join(p, d) for d in dirs])
+            logging.debug("leave %s" % p)
         return ret
 
     def __writesh(self):
