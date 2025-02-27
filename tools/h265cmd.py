@@ -15,7 +15,7 @@ import re
 
 from pyffprobe import probe, codec, videoinfo
 
-VIDEO_FILE_TYPES = ['.mkv', '.mp4', '.avi', '.rmvb']
+VIDEO_FILE_TYPES = ['.mkv', '.mp4', '.avi', '.rmvb', '.mov']
 IMAGE_CODECS_IN_VIDEO_STREAM = ['jpeg2000', 'jpegls', 'mjpeg', 'png', 'sgi', 'tiff', 'webp', 'ppm']
 
 class command:
@@ -43,7 +43,7 @@ class pathrunner():
             raise FileExistsError('target path %s not existed or not accessible' % self.target)
 
     def parsefile(self, f: str):
-        if f.endswith('.hevc.mp4'):
+        if f.endswith('.hevc.mp4') or f.endswith('.hevc.mkv'):
             return
         ext = os.path.splitext(f)[1].lower()
         if ext not in VIDEO_FILE_TYPES:
