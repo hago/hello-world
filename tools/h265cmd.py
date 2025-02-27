@@ -196,7 +196,7 @@ class pathrunner():
                     fp.write(sep)
                 fp.write(cmd.cmd.encode(self.enc))
                 fp.write(sep)
-                fp.write("@IF ERRORLEVEL 0 (".encode(self.enc))
+                fp.write("@IF ERRORLEVEL 1 (".encode(self.enc))
                 fp.write(sep)
                 fp.write("@ECHO 'Error occurs!, EXIT'".encode(self.enc))
                 fp.write(sep)
