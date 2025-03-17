@@ -37,6 +37,7 @@ class pathrunner():
         self.target = os.path.realpath(arg.target)
         self.podman = arg.podman
         self.filterfunc = lambda fn: True if len(arg.filter)==0 else any([re.search(p, fn, re.I) != None for p in arg.filter])
+        self.outfilename = arg.output
         if not os.path.exists(self.root):
             raise FileExistsError('source path %s not existed or not accessible' % self.root)
         if not os.path.exists(self.target):
@@ -175,7 +176,7 @@ class pathrunner():
 
     def __writebash(self):
         sep = '\n'.encode(self.enc)
-        with open(os.path.join(self.target, "h265.sh"), "wb") as fp:
+        with open(os.path.join(self.target, "%s.sh" % self.outfilename), "wb") as fp:
             fp.write(b"#!/bin/sh\n\n")
             for cmd in self.cmds:
                 for comment in cmd.comments:
@@ -191,7 +192,7 @@ class pathrunner():
 
     def __writecmd(self):
         sep = '\r\n'.encode(self.enc)
-        with open(os.path.join(self.target, "h265.cmd"), "wb") as fp:
+        with open(os.path.join(self.target, "%s.cmd" % self.outfilename), "wb") as fp:
             for cmd in self.cmds:
                 for comment in cmd.comments:
                     fp.write(('REM %s' % comment).encode(self.enc))
@@ -222,7 +223,7 @@ def buildargparser():
     parser.add_argument("-t", "--target", default = './',  help='The target path where to create script file and to store target x265 files by the script')
     parser.add_argument("-p", "--podman", required=False, action='store_true',  help='generate commands using containers, podman or docker')
     parser.add_argument("-ft", "--filter", required=False, nargs='*', help='patterns to filter file names', default=[])
-    parser.add_argument("-o", "--output", required=False, nargs='*', help='the name for the generated file', default="h265")
+    parser.add_argument("-o", "--output", required=False, help='the name for the generated file', default="h265")
     return parser
 
 if __name__=='__main__':
