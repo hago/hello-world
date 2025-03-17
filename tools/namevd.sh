@@ -1,4 +1,8 @@
 #!/bin/bash
+#find those directories that contains only one file, then:
+#1. move the file to ../
+#2. rename it to the directory, keeping extension name unchanges
+#3. remove the empty directory
 
 if [ $# -lt 1 ]; then
 	echo "usage $0 [-c] dir dir ..."
