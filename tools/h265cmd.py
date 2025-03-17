@@ -223,6 +223,7 @@ def buildargparser():
     parser.add_argument("-t", "--target", default = './',  help='The target path where to create script file and to store target x265 files by the script')
     parser.add_argument("-p", "--podman", required=False, action='store_true',  help='generate commands using containers, podman or docker')
     parser.add_argument("-ft", "--filter", required=False, nargs='*', help='patterns to filter file names', default=[])
+    parser.add_argument("-o", "--output", required=False, nargs='*', help='the name for the generated file', default="h265")
     return parser
 
 if __name__=='__main__':
