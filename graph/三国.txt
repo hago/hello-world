@@ -1,0 +1,64 @@
+create (:person { name: '刘备'})
+create (:person { name: '关羽'})
+create (:person { name: '张飞'})
+create (:person { name: '诸葛亮'})
+create (:person { name: '曹操'})
+create (:person { name: '孙权'})
+create (:person { name: '周瑜'})
+create (:person { name: '诸葛瑾'})
+create (:person { name: '夏侯惇'})
+create (:person { name: '张辽'})
+create (:person { name: '诸葛诞'})
+create (:person { name: '夏侯渊'})
+create (:regime { name: '蜀汉'})
+create (:regime { name: '东吴'})
+create (:regime { name: '魏国'})
+
+match (p:person) match(r:regime)
+where p.name='刘备' 
+and r.name='蜀汉' create (p)-[:rule {name: "统治"}]->(r);
+match (p:person) match(r:regime)
+where p.name='曹操' 
+and r.name='魏国' create (p)-[:rule {name: "统治"}]->(r);
+match (p:person) match(r:regime)
+where p.name='孙权' 
+and r.name='东吴' create (p)-[:rule {name: "统治"}]->(r);
+
+match (p:person) match(p2:person)
+where 
+(p.name='关羽' or p.name='张飞' or p.name='诸葛亮')
+and p2.name='刘备' create (p)-[:serve {name: "效忠"}]->(p2);
+match (p:person) match(p2:person)
+where 
+(p.name='夏侯渊' or p.name='夏侯惇' or p.name='诸葛诞' or p.name='张辽')
+and p2.name='曹操' create (p)-[:serve {name: "效忠"}]->(p2);
+match (p:person) match(p2:person)
+where 
+(p.name='诸葛瑾' or p.name='周瑜')
+and p2.name='孙权' create (p)-[:serve {name: "效忠"}]->(p2);
+
+match (p:person) match(p2:person)
+where 
+p.name='诸葛亮' and p2.name='诸葛瑾'
+create (p)-[:brotherhood {name: "兄弟"}]->(p2)
+create (p2)-[:brotherhood {name: "兄弟"}]->(p);
+match (p:person) match(p2:person)
+where 
+p.name='诸葛亮' and p2.name='诸葛诞'
+create (p)-[:brotherhood {name: "兄弟"}]->(p2)
+create (p2)-[:brotherhood {name: "兄弟"}]->(p);
+match (p:person) match(p2:person)
+where 
+p.name='诸葛瑾' and p2.name='诸葛诞'
+create (p)-[:brotherhood {name: "兄弟"}]->(p2)
+create (p2)-[:brotherhood {name: "兄弟"}]->(p);
+
+match (p:person) match(p2:person)
+where p.name='关羽' and p2.name='张辽'
+create (p)-[:friend {name: "朋友"}]->(p2)
+create (p2)-[:friend {name: "朋友"}]->(p);
+
+match (p:person) match(p2:person)
+where p.name='张飞' and p2.name='夏侯渊'
+create (p)-[:uncle_in_law {name: "姻伯丈"}]->(p2)
+create (p2)-[:niece_in_law {name: "侄女婿"}]->(p);
