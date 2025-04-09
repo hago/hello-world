@@ -9,6 +9,7 @@ and 50% for the other video codecs.
 
 import argparse
 import logging
+import multiprocessing
 import os
 import os.path
 import re
@@ -61,9 +62,16 @@ class pathrunner():
             (fpath, f0) = os.path.split(f)
             dest = self.__targetrawname(f0)
             cmd = 'podman run %s --rm -v "%s":/config linuxserver/ffmpeg -i "/config/%s" %s "/config/%s"' % \
-                ("" if self.cpus==None else "--cpus %d" % self.cpus, self.__escapefn(fpath), self.__escapefn(f0), codecstr, self.__escapefn(dest))
+                (self.__gencpuparams(), self.__escapefn(fpath), self.__escapefn(f0), codecstr, self.__escapefn(dest))
         logging.debug("ffmpeg cli: %s", cmd)
         self.cmds.append(command(comments, cmd))
+
+    def __gencpuparams(self)->str:
+        if self.cpus == None:
+            return ""
+        else:
+            maxcount = multiprocessing.cpu_count() - 1
+            return "--cpus %d" % (self.cpus if self.cpus < maxcount else maxcount)
 
     def __escapefn(self, f:str)->str:
         return f.replace('"', '\\"')
