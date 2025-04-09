@@ -38,6 +38,7 @@ class pathrunner():
         self.podman = arg.podman
         self.filterfunc = lambda fn: True if len(arg.filter)==0 else any([re.search(p, fn, re.I) != None for p in arg.filter])
         self.outfilename = arg.output
+        self.cpus = arg.cpus
         if not os.path.exists(self.root):
             raise FileExistsError('source path %s not existed or not accessible' % self.root)
         if not os.path.exists(self.target):
@@ -59,8 +60,8 @@ class pathrunner():
         else:
             (fpath, f0) = os.path.split(f)
             dest = self.__targetrawname(f0)
-            cmd = 'podman run --rm -v "%s":/config linuxserver/ffmpeg -i "/config/%s" %s "/config/%s"' % \
-                (self.__escapefn(fpath), self.__escapefn(f0), codecstr, self.__escapefn(dest))
+            cmd = 'podman run %s --rm -v "%s":/config linuxserver/ffmpeg -i "/config/%s" %s "/config/%s"' % \
+                ("" if self.cpus==None else "--cpus %d" % self.cpus, self.__escapefn(fpath), self.__escapefn(f0), codecstr, self.__escapefn(dest))
         logging.debug("ffmpeg cli: %s", cmd)
         self.cmds.append(command(comments, cmd))
 
@@ -224,6 +225,7 @@ def buildargparser():
     parser.add_argument("-p", "--podman", required=False, action='store_true',  help='generate commands using containers, podman or docker')
     parser.add_argument("-ft", "--filter", required=False, nargs='*', help='patterns to filter file names', default=[])
     parser.add_argument("-o", "--output", required=False, help='the name for the generated file', default="h265")
+    parser.add_argument("-c", "--cpus", required=False, help='maximum amount of the cpu cores(hyper thread counts) to be used, only works with -p', type=int)
     return parser
 
 if __name__=='__main__':
