@@ -186,8 +186,17 @@ class pathrunner():
     def __writebash(self):
         sep = '\n'.encode(self.enc)
         fn = os.path.join(self.target, "%s.sh" % self.outfilename)
+        ffmpegcmds = []
+        for cmd in self.cmds:
+            s = sep.join([('#%s' % comment).encode(self.enc) for comment in cmd.comments])
+            s += sep
+            s += cmd.cmd.encode(self.enc)
+            ffmpegcmds.append(s)
+        ss = (b" && \\%s" % sep).join(ffmpegcmds)
         with open(fn, "wb") as fp:
             fp.write(b"#!/bin/sh\n\n")
+            fp.write(ss)
+            '''
             for cmd in self.cmds:
                 for comment in cmd.comments:
                     fp.write(('#%s' % comment).encode(self.enc))
@@ -198,6 +207,7 @@ class pathrunner():
                 fp.write('sleep 10'.encode(self.enc))
                 fp.write(sep)
                 fp.write(sep)
+            '''
         os.chmod(fn, 0o755)
         pass
 
