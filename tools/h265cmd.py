@@ -185,7 +185,8 @@ class pathrunner():
 
     def __writebash(self):
         sep = '\n'.encode(self.enc)
-        with open(os.path.join(self.target, "%s.sh" % self.outfilename), "wb") as fp:
+        fn = os.path.join(self.target, "%s.sh" % self.outfilename)
+        with open(fn, "wb") as fp:
             fp.write(b"#!/bin/sh\n\n")
             for cmd in self.cmds:
                 for comment in cmd.comments:
@@ -197,6 +198,7 @@ class pathrunner():
                 fp.write('sleep 10'.encode(self.enc))
                 fp.write(sep)
                 fp.write(sep)
+        os.chmod(fn, 0o755)
         pass
 
     def __writecmd(self):
