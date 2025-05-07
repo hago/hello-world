@@ -95,9 +95,9 @@ class pathrunner():
                 else:
                     logging.debug('video stream %d is to re-encode in hevc', i)
                     x265br = int(st.codec.bitrate * self.x265br)
-                    comments.append("Stream %d is encoded by hevc with %f" % (vindex, st.codec.bitrate))
-                    comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (st.width, st.height, st.sar, st.dar, st.fps))
                     codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, x265br, vindex, x265br)
+                comments.append("Stream %d is encoded by hevc with %f" % (vindex, st.codec.bitrate))
+                comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (st.width, st.height, st.sar, st.dar, st.fps))
                 continue
             if st.codec.name in IMAGE_CODECS_IN_VIDEO_STREAM:
                 logging.debug('video stream %s is image, copy used', i)
