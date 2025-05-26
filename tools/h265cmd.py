@@ -58,8 +58,9 @@ class pathrunner():
         logging.info("run %s", f)
         info = probe(f)
         if self.encoder == 'HandBrakeCLI':
-            (codecstr, comments) = self.__createcodecoptions(info)
-            cmd = 'HandBrakeCLI -i "%s" %S -o "%s"' % (self.__escapefn(f), codecstr, self.__escapefn(dest))
+            (codecstr, comments) = self.__createHBcodecoptions(info)
+            dest = self.__targetname(f)
+            cmd = 'HandBrakeCLI -i "%s" %s -o "%s"' % (self.__escapefn(f), codecstr, self.__escapefn(dest))
             logging.debug("HandBrakeCLI cli: %s", cmd)
         elif self.encoder == 'ffmpeg':
             (codecstr, comments) = self.__createcodecoptions(info)
@@ -96,14 +97,15 @@ class pathrunner():
         for i in range(len(info.streams)):
             st = info.streams[i]
             if st.isaudio():
-                comments += self.__genaudioinfocomment(st, i)
+                comments.append(self.__genaudioinfocomment(st, i))
                 codeca = st.codec.name
-            elif not st.isvideo():
-                logging.debug("not video stream, skip stream %d", i)
-                continue
-            vindex += 1
-            comments += self.__genvidioinfocomment(st, i)
-            br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
+            elif st.isvideo():
+                vindex += 1
+                comments += self.__genvideoinfocomment(st, i)
+                br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
+            else:
+                logging.warn('stream %d is %s, not supported yet' % (i, st.codec.name))
+        print(br265)
         codecoptstr = "-e x265 -b %d -E copy:%s" % (math.ceil(br265 / 1024), codeca)
         return (codecoptstr, comments)
 
@@ -128,7 +130,7 @@ class pathrunner():
                     logging.debug('video stream %d is to re-encode in hevc', i)
                     x265br = int(st.codec.bitrate * self.x265br)
                     codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, x265br, vindex, x265br)
-                comments += self.__genvidioinfocomment(st, i)
+                comments += self.__genvideoinfocomment(st, i)
                 #comments.append("Stream %d is encoded by hevc with %f" % (vindex, st.codec.bitrate))
                 #comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (st.width, st.height, st.sar, st.dar, st.fps))
                 continue
@@ -141,7 +143,7 @@ class pathrunner():
                 continue
             else:
                 br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
-                comments += self.__genvidioinfocomment(st, i)
+                comments += self.__genvideoinfocomment(st, i)
                 #comments.append("Stream %d is encoded by %s with %f" % (vindex, st.codec.name, st.codec.bitrate))
                 #comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (st.width, st.height, st.sar, st.dar, st.fps))
                 codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, br265, vindex, br265)
@@ -150,7 +152,7 @@ class pathrunner():
     def __genaudioinfocomment(self, stream: audiostreaminfo, idx: int)->str:
         return "audio stream %d is encoded with %s at bit rate %d" % (idx, stream.codec.name, stream.codec.bitrate)
 
-    def __genvidioinfocomment(self, stream: videostreaminfo, vindex: int)->list[str]:
+    def __genvideoinfocomment(self, stream: videostreaminfo, vindex: int)->list[str]:
         comments = []
         comments.append("Stream %d is encoded by hevc with %f" % (vindex, stream.codec.bitrate))
         comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (stream.width, stream.height, stream.sar, stream.dar, stream.fps))
