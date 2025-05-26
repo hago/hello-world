@@ -9,12 +9,14 @@ and 50% for the other video codecs.
 
 import argparse
 import logging
+import math
 import multiprocessing
 import os
 import os.path
 import re
+import sys
 
-from pyffprobe import probe, codec, videoinfo
+from pyffprobe import probe, codec, videoinfo, audiostreaminfo, videostreaminfo
 
 VIDEO_FILE_TYPES = ['.mkv', '.mp4', '.avi', '.rmvb', '.mov', '.mpg']
 IMAGE_CODECS_IN_VIDEO_STREAM = ['jpeg2000', 'jpegls', 'mjpeg', 'png', 'sgi', 'tiff', 'webp', 'ppm']
@@ -40,6 +42,7 @@ class pathrunner():
         self.filterfunc = lambda fn: True if len(arg.filter)==0 else any([re.search(p, fn, re.I) != None for p in arg.filter])
         self.outfilename = arg.output
         self.cpus = arg.cpus
+        self.encoder = arg.encoder
         if not os.path.exists(self.root):
             raise FileExistsError('source path %s not existed or not accessible' % self.root)
         if not os.path.exists(self.target):
@@ -54,16 +57,24 @@ class pathrunner():
             return
         logging.info("run %s", f)
         info = probe(f)
-        (codecstr, comments) = self.__createcodecoptions(info)
-        if not self.podman:
-            dest = self.__targetname(f)
-            cmd = 'ffmpeg -i "%s" %s "%s"' % (self.__escapefn(f), codecstr, self.__escapefn(dest))
+        if self.encoder == 'HandBrakeCLI':
+            (codecstr, comments) = self.__createcodecoptions(info)
+            cmd = 'HandBrakeCLI -i "%s" %S -o "%s"' % (self.__escapefn(f), codecstr, self.__escapefn(dest))
+            logging.debug("HandBrakeCLI cli: %s", cmd)
+        elif self.encoder == 'ffmpeg':
+            (codecstr, comments) = self.__createcodecoptions(info)
+            if not self.podman:
+                dest = self.__targetname(f)
+                cmd = 'ffmpeg -i "%s" %s "%s"' % (self.__escapefn(f), codecstr, self.__escapefn(dest))
+            else:
+                (fpath, f0) = os.path.split(f)
+                dest = self.__targetrawname(f0)
+                cmd = 'podman run %s --rm -v "%s":/config linuxserver/ffmpeg -i "/config/%s" %s "/config/%s"' % \
+                    (self.__gencpuparams(), self.__escapefn(fpath), self.__escapefn(f0), codecstr, self.__escapefn(dest))
+            logging.debug("ffmpeg cli: %s", cmd)
         else:
-            (fpath, f0) = os.path.split(f)
-            dest = self.__targetrawname(f0)
-            cmd = 'podman run %s --rm -v "%s":/config linuxserver/ffmpeg -i "/config/%s" %s "/config/%s"' % \
-                (self.__gencpuparams(), self.__escapefn(fpath), self.__escapefn(f0), codecstr, self.__escapefn(dest))
-        logging.debug("ffmpeg cli: %s", cmd)
+            logging.error('unknown encoder: %s' % self.encoder)
+            sys.exit(-1)
         self.cmds.append(command(comments, cmd))
 
     def __gencpuparams(self)->str:
@@ -76,6 +87,26 @@ class pathrunner():
     def __escapefn(self, f:str)->str:
         return f.replace('"', '\\"')
 
+    def __createHBcodecoptions(self, info: videoinfo) -> tuple[str, list]:
+        comments = []
+        vindex = -1
+        codecoptstr = ""
+        codeca = "aac"
+        br265 = 0
+        for i in range(len(info.streams)):
+            st = info.streams[i]
+            if st.isaudio():
+                comments += self.__genaudioinfocomment(st, i)
+                codeca = st.codec.name
+            elif not st.isvideo():
+                logging.debug("not video stream, skip stream %d", i)
+                continue
+            vindex += 1
+            comments += self.__genvidioinfocomment(st, i)
+            br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
+        codecoptstr = "-e x265 -b %d -E copy:%s" % (math.ceil(br265 / 1024), codeca)
+        return (codecoptstr, comments)
+
     def __createcodecoptions(self, info: videoinfo) -> tuple[str, list]:
         comments = []
         vindex = -1
@@ -83,7 +114,8 @@ class pathrunner():
         for i in range(len(info.streams)):
             st = info.streams[i]
             if st.isaudio():
-                comments.append("audio is encoded with %s at bit rate %d" % (st.codec.name, st.codec.bitrate))
+                comments += self.__genaudioinfocomment(st, i)
+                #comments.append("audio is encoded with %s at bit rate %d" % (st.codec.name, st.codec.bitrate))
             if not st.isvideo():
                 logging.debug("not video stream, skip stream %d", i)
                 continue
@@ -96,8 +128,9 @@ class pathrunner():
                     logging.debug('video stream %d is to re-encode in hevc', i)
                     x265br = int(st.codec.bitrate * self.x265br)
                     codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, x265br, vindex, x265br)
-                comments.append("Stream %d is encoded by hevc with %f" % (vindex, st.codec.bitrate))
-                comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (st.width, st.height, st.sar, st.dar, st.fps))
+                comments += self.__genvidioinfocomment(st, i)
+                #comments.append("Stream %d is encoded by hevc with %f" % (vindex, st.codec.bitrate))
+                #comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (st.width, st.height, st.sar, st.dar, st.fps))
                 continue
             if st.codec.name in IMAGE_CODECS_IN_VIDEO_STREAM:
                 logging.debug('video stream %s is image, copy used', i)
@@ -108,10 +141,20 @@ class pathrunner():
                 continue
             else:
                 br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
-                comments.append("Stream %d is encoded by %s with %f" % (vindex, st.codec.name, st.codec.bitrate))
-                comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (st.width, st.height, st.sar, st.dar, st.fps))
+                comments += self.__genvidioinfocomment(st, i)
+                #comments.append("Stream %d is encoded by %s with %f" % (vindex, st.codec.name, st.codec.bitrate))
+                #comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (st.width, st.height, st.sar, st.dar, st.fps))
                 codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, br265, vindex, br265)
         return (codecoptstr, comments)
+    
+    def __genaudioinfocomment(self, stream: audiostreaminfo, idx: int)->str:
+        return "audio stream %d is encoded with %s at bit rate %d" % (idx, stream.codec.name, stream.codec.bitrate)
+
+    def __genvidioinfocomment(self, stream: videostreaminfo, vindex: int)->list[str]:
+        comments = []
+        comments.append("Stream %d is encoded by hevc with %f" % (vindex, stream.codec.bitrate))
+        comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (stream.width, stream.height, stream.sar, stream.dar, stream.fps))
+        return comments
 
     def __targetname(self, filename: str)->str:
         (srcpath, basename) = os.path.split(filename)
@@ -220,15 +263,15 @@ class pathrunner():
                     fp.write(sep)
                 fp.write(cmd.cmd.encode(self.enc))
                 fp.write(sep)
-                fp.write("@IF ERRORLEVEL 1 (".encode(self.enc))
-                fp.write(sep)
-                fp.write("@ECHO 'Error occurs!, EXIT'".encode(self.enc))
-                fp.write(sep)
-                fp.write("@EXIT /B 42".encode(self.enc))
-                fp.write(sep)
-                fp.write(")".encode(self.enc))
-                fp.write(sep)
-                fp.write(sep)
+                #fp.write("@IF ERRORLEVEL 1 (".encode(self.enc))
+                #fp.write(sep)
+                #fp.write("@ECHO 'Error occurs!, EXIT'".encode(self.enc))
+                #fp.write(sep)
+                #fp.write("@EXIT /B 42".encode(self.enc))
+                #fp.write(sep)
+                #fp.write(")".encode(self.enc))
+                #fp.write(sep)
+                #fp.write(sep)
         pass
 
 def buildargparser():
@@ -246,6 +289,7 @@ def buildargparser():
     parser.add_argument("-ft", "--filter", required=False, nargs='*', help='patterns to filter file names', default=[])
     parser.add_argument("-o", "--output", required=False, help='the name for the generated file', default="h265")
     parser.add_argument("-c", "--cpus", required=False, help='maximum amount of the cpu cores(hyper thread counts) to be used, only works with -p', type=int)
+    parser.add_argument("-e", "--encoder", required=False, help='the encode tool to use: ffmpeg or HandBrakeCLI', choices=['ffmpeg', 'HandBrakeCLI'], default='ffmpeg')
     return parser
 
 if __name__=='__main__':
