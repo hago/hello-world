@@ -105,7 +105,6 @@ class pathrunner():
                 br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
             else:
                 logging.warn('stream %d is %s, not supported yet' % (i, st.codec.name))
-        print(br265)
         codecoptstr = "-e x265 -b %d -E copy:%s" % (math.ceil(br265 / 1024), codeca)
         return (codecoptstr, comments)
 
@@ -116,8 +115,7 @@ class pathrunner():
         for i in range(len(info.streams)):
             st = info.streams[i]
             if st.isaudio():
-                comments += self.__genaudioinfocomment(st, i)
-                #comments.append("audio is encoded with %s at bit rate %d" % (st.codec.name, st.codec.bitrate))
+                comments.append(self.__genaudioinfocomment(st, i))
             if not st.isvideo():
                 logging.debug("not video stream, skip stream %d", i)
                 continue
@@ -131,8 +129,6 @@ class pathrunner():
                     x265br = int(st.codec.bitrate * self.x265br)
                     codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, x265br, vindex, x265br)
                 comments += self.__genvideoinfocomment(st, i)
-                #comments.append("Stream %d is encoded by hevc with %f" % (vindex, st.codec.bitrate))
-                #comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (st.width, st.height, st.sar, st.dar, st.fps))
                 continue
             if st.codec.name in IMAGE_CODECS_IN_VIDEO_STREAM:
                 logging.debug('video stream %s is image, copy used', i)
@@ -144,8 +140,6 @@ class pathrunner():
             else:
                 br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
                 comments += self.__genvideoinfocomment(st, i)
-                #comments.append("Stream %d is encoded by %s with %f" % (vindex, st.codec.name, st.codec.bitrate))
-                #comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (st.width, st.height, st.sar, st.dar, st.fps))
                 codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, br265, vindex, br265)
         return (codecoptstr, comments)
     
