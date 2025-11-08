@@ -16,7 +16,7 @@ import re
 
 from pyffprobe import probe, codec, videoinfo
 
-VIDEO_FILE_TYPES = ['.mkv', '.mp4', '.avi', '.rmvb', '.mov', '.mpg']
+VIDEO_FILE_TYPES = ['.mkv', '.mp4', '.avi', '.rmvb', '.mov', '.mpg', '.ts', 'wmv']
 IMAGE_CODECS_IN_VIDEO_STREAM = ['jpeg2000', 'jpegls', 'mjpeg', 'png', 'sgi', 'tiff', 'webp', 'ppm']
 
 class command:
