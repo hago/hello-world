@@ -9,12 +9,15 @@ import sys
 
 from pyffprobe import probe, streaminfo
 
+FILE_TYPES = [".mp4", ".mkv", ".avi", ".wmv", ".ts"]
+
 def buildargparser():
     parser = argparse.ArgumentParser(description='find video files by meta info')
     parser.add_argument('-p', '--path', default=['./'], help = 'path to look into', nargs="*")
     parser.add_argument('-c', '--codec', help = 'find files by codecs, use - prefix to exclude', nargs="*")
     parser.add_argument('-ce', '--codec-exclude', help = 'find files by codecs, use - prefix to exclude', nargs="*")
-    parser.add_argument('-b', '--bit-rate', help = 'find files by bitrate, use + or - to indicate bit rate range', nargs="*")
+    parser.add_argument('-bmax', '--bit-rate-max', help = 'find files by bitrate equals or smaller than')
+    parser.add_argument('-bmin', '--bit-rate-min', help = 'find files by bitrate equals or greater than')
     parser.add_argument('-l', '--log-level', default = logging.INFO, help = '''setting log level: CRITICAL, FATAL, ERROR, WARNING, WARN = WARNING, INFO, DEBUG, NOTSET''')
     return parser
 
@@ -34,17 +37,10 @@ class argfilter:
             raise Exception("conflict for included and excluded codecs: %s %s" % (self.includecodes.keys(), self.excludecodecs.keys()))
         self.brmax = 0
         self.brmin = 0
-        if arg.bit_rate != None:
-            for r in arg.bit_rate:
-                x = self.__calcbr(r)
-                if x == None:
-                    continue
-                if x > 0 and x > self.brmax:
-                    self.brmax = x
-                elif x < 0:
-                    x = abs(x)
-                    if self.brmin == 0 or self.brmin > x:
-                        self.brmin = x
+        if arg.bit_rate_max != None:
+            self.brmax = self.__calcbr(arg.bit_rate_max)
+        if arg.bit_rate_min != None:
+            self.brmin = self.__calcbr(arg.bit_rate_min)
 
     def __calcbr(self, strbr: str) -> int:
         s = strbr.lower().strip()
@@ -98,7 +94,7 @@ if __name__=='__main__':
     arg=parser.parse_args()
     logging.basicConfig(level=arg.log_level)
     logging.debug("arg: %s", arg)
-    if arg.codec == None and arg.bit_rate == None and arg.codec_exclude == None:
+    if arg.codec == None and arg.bit_rate_max == None and arg.bit_rate_min == None and arg.codec_exclude == None:
         logging.warning("no filter specified")
         sys.exit()
     filter = argfilter(arg)
@@ -106,6 +102,9 @@ if __name__=='__main__':
         fullpath = os.path.realpath(p)
         for (root, dirs, files) in os.walk(fullpath):
             for f in files:
+                ext = os.path.splitext(f)[-1]
+                if ext.lower() not in FILE_TYPES:
+                    continue
                 fn = os.path.join(root, f)
                 logging.debug("probe: %s", fn)
                 vinfo = probe(fn)
