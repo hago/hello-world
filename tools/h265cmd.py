@@ -63,7 +63,7 @@ class pathrunner():
             cmd = 'HandBrakeCLI -i "%s" %s -o "%s"' % (self.__escapefn(f), codecstr, self.__escapefn(dest))
             logging.debug("HandBrakeCLI cli: %s", cmd)
         elif self.encoder == 'ffmpeg':
-            (codecstr, comments) = self.__createcodecoptions(info)
+            (codecstr, comments) = self.__createffmpegcodecoptions(info)
             if not self.podman:
                 dest = self.__targetname(f)
                 cmd = 'ffmpeg -i "%s" %s "%s"' % (self.__escapefn(f), codecstr, self.__escapefn(dest))
@@ -88,50 +88,52 @@ class pathrunner():
     def __escapefn(self, f:str)->str:
         return f.replace('"', '\\"')
 
+    '''
+    When HandBrake is applied, Assumption: only one video stream and only one audio stream in file. 
+    '''
     def __createHBcodecoptions(self, info: videoinfo) -> tuple[str, list]:
-        comments = []
-        vindex = -1
+        (videos, audios, comments) = self.__parsestreams(info)
+        if len(videos) > 1 or len(audios) > 1:
+            logging.warning("multiple video or audio streams in this file")
         codecoptstr = ""
-        codeca = "aac"
         br265 = 0
-        for i in range(len(info.streams)):
-            st = info.streams[i]
-            if st.isaudio():
-                comments.append(self.__genaudioinfocomment(st, i))
-                codeca = st.codec.name
-            elif st.isvideo():
-                vindex += 1
-                comments += self.__genvideoinfocomment(st, i)
-                br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
-            else:
-                logging.warn('stream %d is %s, not supported yet' % (i, st.codec.name))
-        codecoptstr = "-e x265 -b %d -E copy:%s" % (math.ceil(br265 / 1024), codeca)
-        return (codecoptstr, comments)
-
-    def __createcodecoptions(self, info: videoinfo) -> tuple[str, list]:
-        comments = []
-        vindex = -1
-        codecoptstr = "-map 0 -c:a copy -c:s copy"
-        for i in range(len(info.streams)):
-            st = info.streams[i]
-            if st.isaudio():
-                comments.append(self.__genaudioinfocomment(st, i))
-            if not st.isvideo():
-                logging.debug("not video stream, skip stream %d", i)
+        for vindex in range(len(videos)):
+            st = info.streams[vindex]
+            if st.codec.name in IMAGE_CODECS_IN_VIDEO_STREAM:
+                logging.warning("video stream %d is image, skip" % vindex)
                 continue
-            vindex += 1
             if st.codec.name == 'hevc':
                 if self.x265br == None:
-                    logging.debug('video stream %d is already encoded using hevc, copy used', i)
+                    logging.error('video stream %d is already encoded using hevc, re-encode in 90%% of original bitrate is assumpted', vindex)
+                    x265br = int(st.codec.bitrate * 0.9)
+                else:
+                    logging.debug('video stream %d is to re-encode in hevc', vindex)
+                    x265br = int(st.codec.bitrate * self.x265br)
+                codecoptstr += ' -e x265 -b %s ' % (math.ceil(br265 / 1024))
+            else:
+                br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
+                codecoptstr = " -e x265 -b %d " % (math.ceil(br265 / 1024))
+            break
+        codecoptstr += " -E copy:aac "
+        return (codecoptstr, comments)
+
+    def __createffmpegcodecoptions(self, info: videoinfo) -> tuple[str, list]:
+        codecoptstr = "-map 0 -c:s copy"
+        (videos, audios, comments) = self.__parsestreams(info)
+        codecoptstr += " -c:a copy"
+        for vindex in list(range(len(videos))):
+            st = videos[vindex]
+            if st.codec.name == 'hevc':
+                if self.x265br == None:
+                    logging.debug('video stream %d is already encoded using hevc, copy used', vindex)
                     codecoptstr += ' -c:v:%d copy ' % vindex
                 else:
-                    logging.debug('video stream %d is to re-encode in hevc', i)
+                    logging.debug('video stream %d is to re-encode in hevc', vindex)
                     x265br = int(st.codec.bitrate * self.x265br)
                     codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, x265br, vindex, x265br)
-                comments += self.__genvideoinfocomment(st, i)
                 continue
             if st.codec.name in IMAGE_CODECS_IN_VIDEO_STREAM:
-                logging.debug('video stream %s is image, copy used', i)
+                logging.debug('video stream %s is image, copy used', vindex)
                 codecoptstr += ' -c:v:%d copy ' % vindex
                 continue
             if st.codec.bitrate == None:
@@ -139,16 +141,36 @@ class pathrunner():
                 continue
             else:
                 br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
-                comments += self.__genvideoinfocomment(st, i)
                 codecoptstr += ' -c:v:%d hevc -b:v:%d %s -metadata:s:v:%d BPS="%s" ' % (vindex, vindex, br265, vindex, br265)
         return (codecoptstr, comments)
-    
+
+    '''
+    return a tuple of (video streams, audio streams, comments on encoding info)
+    '''
+    def __parsestreams(self, info: videoinfo) -> tuple[list, list, list]:
+        comments = []
+        videostreams = []
+        audiostreams = []
+        vindex = -1
+        for i in range(len(info.streams)):
+            st = info.streams[i]
+            if st.isaudio():
+                comments.append(self.__genaudioinfocomment(st, i))
+                audiostreams.append(st)
+            if not st.isvideo():
+                logging.debug("not video stream, skip stream %d", i)
+                continue
+            vindex += 1
+            videostreams.append(st)
+            comments += self.__genvideoinfocomment(st, i)
+        return (videostreams, audiostreams, comments)
+
     def __genaudioinfocomment(self, stream: audiostreaminfo, idx: int)->str:
         return "audio stream %d is encoded with %s at bit rate %d" % (idx, stream.codec.name, stream.codec.bitrate)
 
     def __genvideoinfocomment(self, stream: videostreaminfo, vindex: int)->list[str]:
         comments = []
-        comments.append("Stream %d is encoded by hevc with %f" % (vindex, stream.codec.bitrate))
+        comments.append("Stream %d is encoded by %s with %f" % (vindex, stream.codec.name, stream.codec.bitrate))
         comments.append("resolution: %d %d SAR: %s DAR: %s FPS: %d" % (stream.width, stream.height, stream.sar, stream.dar, stream.fps))
         return comments
 
