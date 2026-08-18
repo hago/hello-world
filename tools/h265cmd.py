@@ -109,7 +109,7 @@ class pathrunner():
                 else:
                     logging.debug('video stream %d is to re-encode in hevc', vindex)
                     x265br = int(st.codec.bitrate * self.x265br)
-                codecoptstr += ' -e x265 -b %s ' % x265br
+                codecoptstr += ' -e x265 -b %s ' % (math.ceil(br265 / 1024))
             else:
                 br265 = self.__calch265btr(st.codec, int(st.codec.bitrate))
                 codecoptstr = " -e x265 -b %d " % (math.ceil(br265 / 1024))
