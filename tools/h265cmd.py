@@ -98,7 +98,7 @@ class pathrunner():
         codecoptstr = ""
         br265 = 0
         for vindex in range(len(videos)):
-            st = info.streams[vindex]
+            st = videos[vindex]
             if st.codec.name in IMAGE_CODECS_IN_VIDEO_STREAM:
                 logging.warning("video stream %d is image, skip" % vindex)
                 continue
@@ -151,16 +151,15 @@ class pathrunner():
         comments = []
         videostreams = []
         audiostreams = []
-        vindex = -1
         for i in range(len(info.streams)):
             st = info.streams[i]
             if st.isaudio():
                 comments.append(self.__genaudioinfocomment(st, i))
                 audiostreams.append(st)
+                continue
             if not st.isvideo():
                 logging.debug("not video stream, skip stream %d", i)
                 continue
-            vindex += 1
             videostreams.append(st)
             comments += self.__genvideoinfocomment(st, i)
         return (videostreams, audiostreams, comments)
