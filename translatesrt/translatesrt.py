@@ -147,7 +147,7 @@ class TranslateSRT:
                 try:
                     translated = self.__translate_text(original_subs[i].content)
                     break
-                except ollama.ParseError as e:
+                except ollama.ResponseError as e:
                     if e.message.contains("prediction aborted, token repeat limit reached"):
                         logging.warning(f"Token repeat limit reached for subtitle {i + 1}, recreate client.")
                         self.__client.close()
