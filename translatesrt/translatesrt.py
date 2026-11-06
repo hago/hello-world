@@ -81,8 +81,11 @@ class TranslateSRT:
         with open(self.input_file, 'r', encoding='utf-8') as f:
             srt_content = f.read()
         if if_srt_uses_seconds(srt_content):
-            logging.info('converting srt file from seconds to timecode format...')
+            logging.warning(f'{self.input_file} is not a well formed srt file with seconds instead of timecodes.')
+            logging.warning(f'Converting srt file from seconds to timecode format and a converted srt will be saved as {self.input_file}.conv')
             srt_content = fix_srt_timedelta_to_timecode(srt_content)
+            with open(f"{self.input_file}.conv", 'w', encoding='utf-8') as f:
+                f.write(srt_content)
         return list(srt.parse(srt_content))
 
     def __translate_text(self, text:str) -> str:
@@ -140,11 +143,24 @@ class TranslateSRT:
         translate_cr_subs = []
         for i in range(len(original_subs)):
             logging.debug(f"Translating subtitle {i+1}")
-            translated = self.__translate_text(original_subs[i].content)
+            while True:
+                try:
+                    translated = self.__translate_text(original_subs[i].content)
+                    break
+                except ollama.ParseError as e:
+                    if e.message.contains("prediction aborted, token repeat limit reached"):
+                        logging.warning(f"Token repeat limit reached for subtitle {i + 1}, recreate client.")
+                        self.__client.close()
+                        self.__init_ollama_client()
+                        continue
+                    else:
+                        logging.error(f"Unexpected error during translation for subtitle {i + 1}: {e}")
+                        raise e
             if translated == '':
                 logging.warning(f"Subtitle {i + 1} translation is empty, using original content.")
             if self.output_file != None:
-                translated_subs.append(srt.Subtitle(index=original_subs[i].index, start=original_subs[i].start, end=original_subs[i].end, content=translated))
+                translated_subs.append(srt.Subtitle(index=original_subs[i].index, start=original_subs[i].start, end=original_subs[i].end,
+                                                    content=translated if translated != None else f'{original_subs[i].content} translation failed'))
             else:
                 print(f"subtitle {i}: {original_subs[i].content} --> {translated}")
             if self.cross_ref_subs_output != None:
