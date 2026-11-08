@@ -143,16 +143,23 @@ class TranslateSRT:
         translate_cr_subs = []
         for i in range(len(original_subs)):
             logging.debug(f"Translating subtitle {i+1}")
+            retrycount = 3
             while True:
                 try:
                     translated = self.__translate_text(original_subs[i].content)
                     break
                 except ollama.ResponseError as e:
-                    if e.message.contains("prediction aborted, token repeat limit reached"):
+                    if "prediction aborted, token repeat limit reached" in str(e):
                         logging.warning(f"Token repeat limit reached for subtitle {i + 1}, recreate client.")
                         self.__client.close()
                         self.__init_ollama_client()
-                        continue
+                        retrycount -= 1
+                        if retrycount <= 0:
+                            logging.error(f"Failed to translate subtitle {i + 1} after 3 retries, skipping.")
+                            translated = f'failed to translate subtitle {i + 1}: {original_subs[i].content}'
+                            break
+                        else:
+                            continue
                     else:
                         logging.error(f"Unexpected error during translation for subtitle {i + 1}: {e}")
                         raise e
