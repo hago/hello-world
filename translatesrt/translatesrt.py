@@ -69,8 +69,8 @@ class TranslateSRT:
         self.__to_language_name = iso639.Language.from_part1(to_language).name
         self.__init_ollama_client()
         self.__prompt = f"""
-        You are an professional interpreter. In the following conversation, translate every sentence directly to {self.__to_language_name} and wrap each result with << and >>.
-        If there are multiple possible ways to do it, use the most direct one and do not provide any other options.
+        You are an professional interpreter. In the following conversation, translate every sentence directly to {self.__to_language_name} and wrap each result with 
+        curly braces. If there are multiple possible ways to do it, use the most direct one and do not provide any other options.
         """
 
     def __init_ollama_client(self):
@@ -99,30 +99,32 @@ class TranslateSRT:
                 },
                 {
                     "role": "user", 
-                    "content": text
+                    "content": f'translate "{text}"'
                 }]
         )
         logging.debug(f"Translation response: {rsp}")
         translations = self.__parse_result(rsp)
         if len(translations) != 1 or translations[0] == '':
+            logging.warning(f"Failed to translate text, try again")
             messages = [{
                 "role": "user", 
-                "content": "Your answer does not contain the translation of the input. Please provide translation and wrap each translation with << and >>."
+                "content": "Your answer does not contain the translation of the input. Please provide translation and wrap each translation with curly braces."
             }]
             rsp = self.__client.chat(
                 model = MODEL_NAME,
                 messages = messages
             )
+            logging.debug(f"Translation response: {rsp}")
             translations = self.__parse_result(rsp)
         if len(translations) == 1:
             logging.debug(f"{text} -> {translations[0]}")
             if translations[0] != '':
                 return translations[0]
             else:
-                logging.warning(f"Translation result not parsed correctly, returning raw response content: {rsp['message']['content']}")
+                logging.warning(f"Translation result not parsed correctly, returning raw response content: {rsp['message']}")
                 return rsp['message']['content']
         elif len(translations) == 0:
-            logging.error(f"Failed to translate text: {text}. Response: {rsp}")
+            logging.error(f"Failed to translate text: {text}. Response: {rsp['message']}")
             return None
         else:
             logging.warning(f"{text} may have multiple translations.")
@@ -134,7 +136,8 @@ class TranslateSRT:
     It returns a list of these translations.
     '''
     def __parse_result(self, rsp:ollama.ChatResponse) -> list[str]:
-        translations = re.findall(r'<<(.+?)>>', rsp['message']['content'])
+        #translations = re.findall(r'<<(.+?)>>', rsp['message']['content'])
+        translations = re.findall(r'{(.+?)}', rsp['message']['content'])
         return [x.strip() for x in translations]
 
     def run(self):
